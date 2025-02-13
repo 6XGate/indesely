@@ -1,0 +1,31 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_size = 4
+indent_style = space
+insert_final_newline = true
+max_line_length = 120
+tab_width = 4
+trim_trailing_whitespace = true
+
+# Source code
+[*.{js,jsx,cjs,mjs,ts,tsx,cts,mts,vue}]
+indent_size = 2
+tab_width = 2
+
+# Mark-up/down
+[*.{html,htm,md}]
+indent_size = 2
+tab_width = 2
+
+# Data streams
+[*.{json,yaml,yml}]
+indent_size = 2
+tab_width = 2
+
+# Style sheets
+[*.{css,scss,sass}]
+indent_size = 2
+tab_width = 2

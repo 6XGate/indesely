@@ -1,0 +1,22 @@
+{
+  "extends": "@tsconfig/strictest",
+  "include": ["src"],
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2023", "DOM"],
+    "incremental": true,
+    "isolatedModules": true,
+    "inlineSourceMap": true,
+    "useDefineForClassFields": true,
+    "resolveJsonModule": true,
+    "outDir": "dist",
+    "declaration": true,
+    "importHelpers": true,
+    "noEmitHelpers": true,
+    "allowSyntheticDefaultImports": true,
+    "noUncheckedSideEffectImports": true,
+    "verbatimModuleSyntax": true
+  }
+}
