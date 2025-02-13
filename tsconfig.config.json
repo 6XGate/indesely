@@ -1,4 +1,4 @@
 {
   "extends": ["@tsconfig/node20", "./tsconfig.base.json"],
-  "include": ["eslint.config.mjs", ".prettierrc.mjs", "vitest.config.ts"]
+  "include": ["eslint.config.mjs", ".prettierrc.mjs", "vitest.config.ts", "docs"]
 }

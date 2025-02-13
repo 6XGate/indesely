@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, test } from 'vitest';
-import { defineDatabase, deleteDatabase  } from '../src/define';
+import { defineDatabase, deleteDatabase } from '../src/define';
 import { AutoIncrement } from '../src/utilities';
 import { getSuitePath } from './tools/utilities';
-import type {Store} from '../src/define';
+import type { Store } from '../src/define';
 
 type TestSchema = {
   rows: Store<{ name: string; maybe?: unknown }, AutoIncrement>;

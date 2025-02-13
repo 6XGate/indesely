@@ -3,7 +3,7 @@
 import eslint from '@eslint/js';
 import importer from 'eslint-plugin-import-x';
 import jsdoc from 'eslint-plugin-jsdoc';
-import tsdoc from  'eslint-plugin-tsdoc';
+import tsdoc from 'eslint-plugin-tsdoc';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
@@ -14,7 +14,14 @@ export default tseslint.config(
   tseslint.configs.strictTypeChecked,
   tseslint.configs.stylisticTypeChecked,
   {
-    ignores: ['node_modules/**/*', 'dist/**/*', '.vscode/**/*', '.git/**/*'],
+    ignores: [
+      'node_modules/**/*',
+      'dist/**/*',
+      'docs/.vitepress/cache',
+      'docs/.vitepress/dist',
+      '.vscode/**/*',
+      '.git/**/*',
+    ],
   },
   {
     plugins: { tsdoc },
@@ -29,8 +36,8 @@ export default tseslint.config(
     settings: {
       'import/resolver-x': { typescript: true },
     },
-  // },
-  // {
+    // },
+    // {
     rules: {
       // JavaScript
       'curly': ['error', 'multi-line'],

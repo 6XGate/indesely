@@ -13,7 +13,10 @@
     "prettier:check": "prettier . --check",
     "build": "run-s -l clean compile",
     "compile": "tsc -p tsconfig.lib.json",
-    "clean": "del dist"
+    "clean": "del dist",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
   },
   "devDependencies": {
     "@eslint/js": "^9.20.0",
@@ -36,6 +39,7 @@
     "type-fest": "^4.34.1",
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.24.0",
+    "vitepress": "^1.6.3",
     "vitest": "^3.0.5"
   }
 }
