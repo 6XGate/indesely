@@ -1,4 +1,4 @@
 export * from './builders.js';
-export * from './define.js';
-export * from './schema.js';
+export * from './database.js';
+export * from './migrations.js';
 export * from './transactions.js';

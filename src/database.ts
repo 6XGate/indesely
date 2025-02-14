@@ -1,8 +1,8 @@
 import { memoize } from './compat.js';
-import { UpgradeTransaction } from './schema.js';
+import { DatabaseBuilder } from './migrations.js';
 import { ReadOnlyTransaction, ReadWriteTransaction } from './transactions.js';
 import { requestDatabasePersistence, waitOnRequest } from './utilities.js';
-import type { Migration } from './schema.js';
+import type { Migration } from './migrations.js';
 import type { AutoIncrement, ManualKey, MemberPaths } from './utilities.js';
 
 /**
@@ -125,7 +125,7 @@ export function defineDatabase<Schema extends Record<string, object>>(options: D
 
     request.onupgradeneeded = function migrateDatabase(ev) {
       if (request.transaction == null) throw new Error('No transaction');
-      const migrator = new UpgradeTransaction(request.transaction);
+      const migrator = new DatabaseBuilder(request.transaction);
       for (const migration of migrations.slice(ev.oldVersion)) {
         migration(migrator);
       }
@@ -190,7 +190,7 @@ export function defineDatabase<Schema extends Record<string, object>>(options: D
  *
  * @todo Not sure what we should do about the blocked event yet.
  */
-export async function deleteDatabase(name: string) {
+export async function dropDatabase(name: string) {
   const request = globalThis.indexedDB.deleteDatabase(name);
   request.onblocked = () => {
     request.result.close();

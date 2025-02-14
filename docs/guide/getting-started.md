@@ -179,5 +179,5 @@ For more about the core concepts;
 
 Once you understand the core concepts;
 
-- You can see in depth documentation about the [Indesely API](/reference/databases).
+- You can see in depth documentation about the [Indesely API](/reference/managements).
 - You can even manage your databases [Managing Databases](managing-databases).

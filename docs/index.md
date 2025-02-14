@@ -15,7 +15,7 @@ hero:
       link: /guide/getting-started
     - theme: alt
       text: API Reference
-      link: /reference/database
+      link: /reference/management
 
 features:
   - title: Easy to learn

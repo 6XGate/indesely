@@ -27,19 +27,19 @@ export class StoreBuilder {
    * @param name - The name of the index.
    * @returns This {@link StoreBuilder} instance.
    */
-  deleteIndex(name: string) {
+  dropIndex(name: string) {
     this.#handle.deleteIndex(name);
     return this;
   }
 }
 
 /**
- * Update transaction.
+ * Database Builder transaction.
  *
  * Do not mix other asynchronous operations with IndexedDB operations
  * within a transaction, the transaction will timeout.
  */
-export class UpgradeTransaction {
+export class DatabaseBuilder {
   readonly #handle;
 
   constructor(transaction: IDBTransaction) {
@@ -87,7 +87,7 @@ export class UpgradeTransaction {
    * Deletes an object store in the database within the transaction.
    * @param name - The name of the store.
    */
-  deleteStore(name: string) {
+  dropStore(name: string) {
     this.#handle.db.deleteObjectStore(name);
   }
 }
@@ -96,4 +96,4 @@ export class UpgradeTransaction {
  * Migration function.
  * @param transaction - The migration transaction.
  */
-export type Migration = (transaction: UpgradeTransaction) => void;
+export type Migration = (transaction: DatabaseBuilder) => void;

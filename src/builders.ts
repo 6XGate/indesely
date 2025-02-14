@@ -61,9 +61,13 @@ declare global {
  * @todo Support cursor advancement via keys, which will likely be a different method from {@link stream}.
  */
 export class SelectQueryBuilder<Row extends object, Key, Indices extends object> {
+  /** IndexedDB {@link IDBObjectStore} handle. */
   readonly #handle;
+  /** Select by key range. */
   #range: IDBKeyRange | null = null;
+  /** Select by index range. */
   #index: [name: keyof Indices, range: IDBKeyRange] | null = null;
+  /** Selection limit. */
   #limit: number | undefined;
 
   constructor(store: IDBObjectStore) {
@@ -485,6 +489,7 @@ export class SelectQueryBuilder<Row extends object, Key, Indices extends object>
 
 /** Add query builder. */
 export class InsertQueryBuilder<Row extends object, Key> {
+  /** IndexedDB {@link IDBObjectStore} handle. */
   readonly #handle;
 
   constructor(store: IDBObjectStore) {
@@ -503,6 +508,7 @@ export class InsertQueryBuilder<Row extends object, Key> {
  * @todo Add support for whereKey and where with partial data using {@link IDBCursor.update}.
  */
 export class UpdateQueryBuilder<Row extends object, Key> {
+  /** IndexedDB {@link IDBObjectStore} handle. */
   readonly #handle;
 
   constructor(store: IDBObjectStore) {
@@ -521,7 +527,9 @@ export class UpdateQueryBuilder<Row extends object, Key> {
  * @todo Add support for where, using {@link IDBCursor.delete} from an index.
  */
 export class DeleteQueryBuilder<Row extends object, Key> {
+  /** IndexedDB {@link IDBObjectStore} handle. */
   readonly #handle;
+  /** Delete by key range. */
   #range: IDBKeyRange | null = null;
 
   constructor(store: IDBObjectStore) {

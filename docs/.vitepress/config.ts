@@ -14,16 +14,6 @@ export default defineConfig({
       '/reference/': { base: '/reference/', items: sidebarReference() },
     },
 
-    /* [
-      {
-        text: 'Examples',
-        items: [
-          { text: 'Markdown Examples', link: '/markdown-examples' },
-          { text: 'Runtime API Examples', link: '/api-examples' },
-        ],
-      },
-    ], */
-
     socialLinks: [{ icon: 'github', link: 'https://github.com/sixxgate/indesely' }],
   },
 });
@@ -34,7 +24,7 @@ function nav(): NavItem[] {
   return [
     { text: 'Home', link: '/' },
     { text: 'Guide', link: '/guide/what-is-indesely' },
-    { text: 'Reference', link: '/reference/database' },
+    { text: 'Reference', link: '/reference/management' },
   ];
 }
 
@@ -60,7 +50,7 @@ function sidebarGuide(): SidebarItem[] {
         { text: 'Managing Databases', link: 'managing-databases' },
       ],
     },
-    { text: 'API Reference', link: '../reference/database' },
+    { text: 'API Reference', link: '../reference/management' },
   ];
 }
 
@@ -69,25 +59,16 @@ function sidebarReference(): SidebarItem[] {
     {
       text: 'Database API',
       items: [
-        { text: 'defineDatabase', link: 'define-database' },
-        { text: 'deleteDatabase', link: 'delete-database' },
-        { text: 'listDatabases', link: 'list-databases' },
-        { text: 'useDatabase', link: 'use-database' },
-      ],
-    },
-    {
-      text: 'Schema API',
-      items: [
-        { text: 'Store', link: 'store' },
-        { text: 'Models', link: 'models' },
-        { text: 'Indices', link: 'indices' },
-        { text: 'Keys', link: 'keys' },
+        { text: 'Management', link: 'management' },
+        { text: 'Database', link: 'database' },
+        { text: 'Schema', link: 'schema' },
       ],
     },
     {
       text: 'Migration API',
       items: [
-        { text: 'UpgradeTransaction', link: 'upgrade-transaction' },
+        { text: 'Migrations', link: 'migrations' },
+        { text: 'DatabaseBuilder', link: 'database-builder' },
         { text: 'StoreBuilder', link: 'store-builder' },
       ],
     },

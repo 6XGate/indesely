@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, test } from 'vitest';
-import { defineDatabase, deleteDatabase } from '../src/define';
+import { defineDatabase, dropDatabase } from '../src/database';
 import { AutoIncrement } from '../src/utilities';
 import { getSuitePath } from './tools/utilities';
-import type { Store } from '../src/define';
+import type { Store } from '../src/database';
 
 type TestSchema = {
   rows: Store<{ name: string; maybe?: unknown }, AutoIncrement>;
@@ -11,7 +11,7 @@ type TestSchema = {
 let useDatabase: ReturnType<typeof defineDatabase<TestSchema>>;
 beforeEach(async (context) => {
   const name = getSuitePath(context);
-  await deleteDatabase(name);
+  await dropDatabase(name);
   useDatabase = defineDatabase<TestSchema>({
     name,
     migrations: [(trx) => trx.createStore('rows', AutoIncrement)],
