@@ -1,9 +1,9 @@
 import { AutoIncrement } from './utilities.js';
 
 /**
- * Index schema builder.
+ * Store builder.
  */
-export class IndexSchemaBuilder {
+export class StoreBuilder {
   readonly #handle;
 
   constructor(store: IDBObjectStore) {
@@ -15,7 +15,7 @@ export class IndexSchemaBuilder {
    * @param name - The name of the index.
    * @param keyPath - Path or paths to the indexed keys.
    * @param options - Indexing options.
-   * @returns This {@link IndexSchemaBuilder} instance.
+   * @returns This {@link StoreBuilder} instance.
    */
   createIndex(name: string, keyPath: string | string[], options?: IDBIndexParameters) {
     this.#handle.createIndex(name, keyPath, options);
@@ -25,7 +25,7 @@ export class IndexSchemaBuilder {
   /**
    * Deletes an index of the object store.
    * @param name - The name of the index.
-   * @returns This {@link IndexSchemaBuilder} instance.
+   * @returns This {@link StoreBuilder} instance.
    */
   deleteIndex(name: string) {
     this.#handle.deleteIndex(name);
@@ -49,38 +49,38 @@ export class UpgradeTransaction {
   /**
    * Alters an object store in the database within the transaction.
    * @param name - The name of the store.
-   * @returns A {@link IndexSchemaBuilder} for the store.
+   * @returns A {@link StoreBuilder} for the store.
    */
   alterStore(name: string) {
-    return new IndexSchemaBuilder(this.#handle.objectStore(name));
+    return new StoreBuilder(this.#handle.objectStore(name));
   }
 
   /**
    * Create an object store in the database within the transaction.
    * @param name - The name of the store.
-   * @returns A {@link IndexSchemaBuilder} for the store.
+   * @returns A {@link StoreBuilder} for the store.
    */
-  createStore(name: string): IndexSchemaBuilder;
+  createStore(name: string): StoreBuilder;
   /**
    * Create an object store in the database within the transaction.
    * @param name - The name of the store.
    * @param autoIncrement - Indicates an auto increment key.
-   * @returns A {@link IndexSchemaBuilder} for the store.
+   * @returns A {@link StoreBuilder} for the store.
    */
-  createStore(name: string, autoIncrement: AutoIncrement): IndexSchemaBuilder;
+  createStore(name: string, autoIncrement: AutoIncrement): StoreBuilder;
   /**
    * Create an object store in the database within the transaction.
    * @param name - The name of the store.
    * @param keyPath - The path to the primary key.
-   * @returns A {@link IndexSchemaBuilder} for the store.
+   * @returns A {@link StoreBuilder} for the store.
    */
-  createStore(name: string, keyPath: string | string[]): IndexSchemaBuilder;
+  createStore(name: string, keyPath: string | string[]): StoreBuilder;
   /** The {@link createStore} implementation. */
   createStore(name: string, keyPath?: AutoIncrement | string | string[]) {
     const keyInfo = Array.isArray(keyPath) || typeof keyPath === 'string' ? { keyPath } : {};
     const incInfo = keyPath === AutoIncrement ? { autoIncrement: true } : {};
 
-    return new IndexSchemaBuilder(this.#handle.db.createObjectStore(name, { ...keyInfo, ...incInfo }));
+    return new StoreBuilder(this.#handle.db.createObjectStore(name, { ...keyInfo, ...incInfo }));
   }
 
   /**
