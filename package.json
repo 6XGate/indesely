@@ -9,6 +9,8 @@
     "test": "vitest run",
     "tests:watch": "vitest",
     "tests:ui": "vitest --ui",
+    "eslint:fix": "eslint . --fix",
+    "eslint:check": "eslint .",
     "prettier:fix": "prettier . --write",
     "prettier:check": "prettier . --check",
     "build": "run-s -l clean compile",

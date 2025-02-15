@@ -82,10 +82,16 @@ export default tseslint.config(
       '@typescript-eslint/consistent-type-definitions': 'off',
       // Ensure a consistent type import style is adhered to.
       '@typescript-eslint/consistent-type-imports': 'error',
+      // Arrow shorthand is rather common, and cleaner.
+      '@typescript-eslint/no-confusing-void-expression': ['error', { ignoreArrowShorthand: true }],
       // Some type inferences need `any`.
       '@typescript-eslint/no-explicit-any': ['error', { ignoreRestArgs: true }],
       // Ensure any type-only import don't result in side-effects.
       '@typescript-eslint/no-import-type-side-effects': 'error',
+      // Still flags necessary type parameters as unnecessary.
+      '@typescript-eslint/no-unnecessary-type-parameters': 'off',
+      // Allow some very common template expressions.
+      '@typescript-eslint/restrict-template-expressions': ['error', { allowNumber: true }],
       // Sometimes, better documentation takes priority.
       '@typescript-eslint/unified-signatures': 'off',
     },

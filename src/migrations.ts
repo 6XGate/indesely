@@ -1,8 +1,10 @@
+import { ReadWriteTransaction } from './transactions.js';
 import { AutoIncrement } from './utilities.js';
+import type { Store } from './database.js';
+import type { UpgradingKey } from './utilities.js';
+import type { Promisable } from 'type-fest';
 
-/**
- * Store builder.
- */
+/** Store builder. */
 export class StoreBuilder {
   readonly #handle;
 
@@ -33,26 +35,29 @@ export class StoreBuilder {
   }
 }
 
+/** Indices available during migrations. */
+export type UpgradeableIndices = Record<string, UpgradingKey>;
+
+/** Store schema available during migrations. */
+export type UpgradeableStore = Store<Record<string, unknown>, UpgradingKey, UpgradeableIndices>;
+
+/** Schema available during migrations. */
+export type UpgradeableSchema = Record<string, UpgradeableStore>;
+
 /**
  * Database Builder transaction.
  *
  * Do not mix other asynchronous operations with IndexedDB operations
  * within a transaction, the transaction will timeout.
  */
-export class DatabaseBuilder {
-  readonly #handle;
-
-  constructor(transaction: IDBTransaction) {
-    this.#handle = transaction;
-  }
-
+export class DatabaseBuilder extends ReadWriteTransaction<UpgradeableSchema> {
   /**
    * Alters an object store in the database within the transaction.
    * @param name - The name of the store.
    * @returns A {@link StoreBuilder} for the store.
    */
   alterStore(name: string) {
-    return new StoreBuilder(this.#handle.objectStore(name));
+    return new StoreBuilder(this.handle.objectStore(name));
   }
 
   /**
@@ -80,7 +85,7 @@ export class DatabaseBuilder {
     const keyInfo = Array.isArray(keyPath) || typeof keyPath === 'string' ? { keyPath } : {};
     const incInfo = keyPath === AutoIncrement ? { autoIncrement: true } : {};
 
-    return new StoreBuilder(this.#handle.db.createObjectStore(name, { ...keyInfo, ...incInfo }));
+    return new StoreBuilder(this.handle.db.createObjectStore(name, { ...keyInfo, ...incInfo }));
   }
 
   /**
@@ -88,7 +93,7 @@ export class DatabaseBuilder {
    * @param name - The name of the store.
    */
   dropStore(name: string) {
-    this.#handle.db.deleteObjectStore(name);
+    this.handle.db.deleteObjectStore(name);
   }
 }
 
@@ -96,4 +101,4 @@ export class DatabaseBuilder {
  * Migration function.
  * @param transaction - The migration transaction.
  */
-export type Migration = (transaction: DatabaseBuilder) => void;
+export type Migration = (transaction: DatabaseBuilder) => Promisable<void>;

@@ -5,7 +5,7 @@ import { getSuitePath } from './tools/utilities';
 import type { Store } from '../src/database';
 
 type TestSchema = {
-  rows: Store<{ name: string; maybe?: unknown }, AutoIncrement>;
+  rows: Store<{ name: string; maybe?: unknown }, AutoIncrement, { maybe: 'maybe' }>;
 };
 
 let useDatabase: ReturnType<typeof defineDatabase<TestSchema>>;
@@ -14,13 +14,18 @@ beforeEach(async (context) => {
   await dropDatabase(name);
   useDatabase = defineDatabase<TestSchema>({
     name,
-    migrations: [(trx) => trx.createStore('rows', AutoIncrement)],
+    migrations: [
+      (trx) => {
+        trx.createStore('rows', AutoIncrement);
+      },
+    ],
   });
 });
 
 describe('insertion', () => {
   test('basic', async () => {
     const db = useDatabase();
+
     await db.change(['rows'], async (trx) => {
       await expect(trx.insertInto('rows').add({ name: 'row1' })).resolves.toBeUndefined();
     });

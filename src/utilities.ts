@@ -1,5 +1,10 @@
-import { memoize, withResolvers } from './compat.js';
-import type { Get, Paths } from 'type-fest';
+import { withResolvers } from './compat.js';
+import type { Constructor, Get, Paths } from 'type-fest';
+
+/** Symbol to indicate the schema should be flexible enough for migration. */
+export type UpgradingKey = typeof UpgradingKey;
+/** Symbol to indicate the schema should be flexible enough for migration. */
+export const UpgradingKey = Symbol('UpgradingKey');
 
 /** Symbol to indicates a manual key. */
 export type ManualKey = typeof ManualKey;
@@ -27,11 +32,13 @@ type MemberTypes<Row extends object, Keys> = Keys extends []
       : never;
 
 /** Gets the types of a path or paths in `Row`. */
-export type MemberType<Row extends object, Key> = Key extends [...unknown[]]
-  ? MemberTypes<Row, Key>
-  : Key extends MemberPaths<Row>
-    ? MemberElement<Get<Row, Key>>
-    : never;
+export type MemberType<Row extends object, Key> = Key extends UpgradingKey
+  ? IDBValidKey
+  : Key extends [...unknown[]]
+    ? MemberTypes<Row, Key>
+    : Key extends MemberPaths<Row>
+      ? MemberElement<Get<Row, Key>>
+      : never;
 
 /** Gets the key path of a store. */
 export type StoreKey<Store extends object> = Store extends { key: infer Key } ? Key : never;
@@ -41,6 +48,28 @@ export type StoreRow<Store extends object> = Store extends { row: infer Row exte
 export type StoreIndices<Store extends object> = Store extends { indices: infer Indices extends object }
   ? Indices
   : never;
+
+// eslint-disable-next-line @typescript-eslint/no-unsafe-function-type -- Must be raw type.
+export function isFunction(value: unknown): value is Function {
+  return typeof value === 'function';
+}
+
+export type Class<T, Arguments extends unknown[] = unknown[]> = Constructor<T, Arguments> & { prototype: T };
+export function isClass<T = unknown>(value: unknown): value is Class<T> {
+  return isFunction(value) && value.toString().startsWith('class ');
+}
+
+export function memoize<Args extends unknown[], Result>(func: (...args: Args) => Result) {
+  const cache = new Map<string, { result: Result }>();
+  return function cacheCall(...args: Args) {
+    const key = JSON.stringify(args);
+    let entry = cache.get(key);
+    if (entry != null) return entry.result;
+    entry = { result: func(...args) };
+    cache.set(key, entry);
+    return entry.result;
+  };
+}
 
 /**
  * Request that the application databases are persisted.
@@ -68,11 +97,9 @@ export const requestDatabasePersistence = memoize(async (fail: boolean = false) 
  */
 export async function waitOnRequest<T>(request: IDBRequest<T>) {
   const { promise, resolve, reject } = withResolvers<T>();
-  request.onsuccess = () => {
-    resolve(request.result);
-  };
-  request.onerror = () => {
-    reject(request.error);
-  };
+
+  request.onsuccess = () => resolve(request.result);
+  request.onerror = () => reject(request.error ?? new Error('Unknown request failure'));
+
   return await promise;
 }

@@ -1,6 +1,6 @@
-import { isClass, withResolvers } from './compat.js';
-import { waitOnRequest } from './utilities.js';
-import type { AutoIncrement, ManualKey, MemberPaths, MemberType } from './utilities.js';
+import { withResolvers } from './compat.js';
+import { isClass, waitOnRequest } from './utilities.js';
+import type { AutoIncrement, ManualKey, MemberPaths, MemberType, UpgradingKey } from './utilities.js';
 
 /** Comparison operators of the where clause. */
 type Compares = '=' | '<' | '<=' | '>=' | '>';
@@ -25,7 +25,9 @@ type KeyOf<Row extends object, Key> =
       ? number
       : Key extends ManualKey
         ? IDBValidKey
-        : never;
+        : Key extends UpgradingKey
+          ? IDBValidKey
+          : never;
 
 /** Gets the necessary _add_ and _put_ parameters for a row. */
 type UpdateArgsFor<Row extends object, Key> =
@@ -35,7 +37,9 @@ type UpdateArgsFor<Row extends object, Key> =
       ? [document: Row]
       : Key extends ManualKey
         ? [document: Row, key: IDBValidKey]
-        : never;
+        : Key extends UpgradingKey
+          ? [document: Row, key?: IDBValidKey]
+          : never;
 
 declare global {
   interface IDBObjectStore {
@@ -114,7 +118,7 @@ export class SelectQueryBuilder<Row extends object, Key, Indices extends object>
     let { promise, resolve, reject } = withResolvers<Row | Done>();
 
     request.onerror = () => {
-      reject(request.error);
+      reject(request.error ?? new Error('Unknown cursor error'));
     };
 
     let advancement: number | undefined;
@@ -232,7 +236,7 @@ export class SelectQueryBuilder<Row extends object, Key, Indices extends object>
     let { promise, resolve, reject } = withResolvers<PK | Done>();
 
     request.onerror = () => {
-      reject(request.error);
+      reject(request.error ?? new Error('Unknown key cursor error'));
     };
 
     let advancement: number | undefined;

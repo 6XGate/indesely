@@ -1,9 +1,8 @@
-import { memoize } from './compat.js';
 import { DatabaseBuilder } from './migrations.js';
 import { ReadOnlyTransaction, ReadWriteTransaction } from './transactions.js';
-import { requestDatabasePersistence, waitOnRequest } from './utilities.js';
+import { memoize, requestDatabasePersistence, waitOnRequest } from './utilities.js';
 import type { Migration } from './migrations.js';
-import type { AutoIncrement, ManualKey, MemberPaths } from './utilities.js';
+import type { AutoIncrement, ManualKey, MemberPaths, UpgradingKey } from './utilities.js';
 
 /**
  * IndexedDB database connection.
@@ -42,15 +41,10 @@ class Database<Schema extends Record<string, object>> {
     stores: readonly Stores[],
     scope: (trx: ReadOnlyTransaction<Pick<Schema, Stores>>) => Promise<Result>,
   ) {
-    const trx = this.#handle.transaction(stores.map(String), 'readonly');
-    try {
-      const result = await scope(new ReadOnlyTransaction<Pick<Schema, Stores>>(trx));
-      trx.commit();
-      return result;
-    } catch (error) {
-      trx.abort();
-      throw error;
-    }
+    const native = this.#handle.transaction(stores.map(String), 'readwrite');
+    const trx = new ReadOnlyTransaction<Pick<Schema, Stores>>(native);
+
+    return await trx.run(scope);
   }
 
   /**
@@ -63,17 +57,17 @@ class Database<Schema extends Record<string, object>> {
     stores: readonly Stores[],
     scope: (trx: ReadWriteTransaction<Pick<Schema, Stores>>) => Promise<Result>,
   ) {
-    const trx = this.#handle.transaction(stores.map(String), 'readwrite');
-    try {
-      const result = await scope(new ReadWriteTransaction<Pick<Schema, Stores>>(trx));
-      trx.commit();
-      return result;
-    } catch (error) {
-      trx.abort();
-      throw error;
-    }
+    const native = this.#handle.transaction(stores.map(String), 'readwrite');
+    const trx = new ReadWriteTransaction<Pick<Schema, Stores>>(native);
+
+    return await trx.run(scope);
   }
 }
+
+/** All possible key paths or sources for a store's model. */
+type PossibleKeys<Row> = ManualKey | AutoIncrement | UpgradingKey | MemberPaths<Row> | MemberPaths<Row>[];
+
+type PossibleIndices<Row> = Record<string, UpgradingKey> | Record<string, MemberPaths<Row> | MemberPaths<Row>[]>;
 
 /**
  * Defines a store in an IndexedDB database.
@@ -86,8 +80,8 @@ class Database<Schema extends Record<string, object>> {
  */
 export type Store<
   Row extends object,
-  Key extends ManualKey | AutoIncrement | MemberPaths<Row> | MemberPaths<Row>[] = ManualKey,
-  Indices extends Record<string, MemberPaths<Row> | MemberPaths<Row>[]> = Record<PropertyKey, never>,
+  Key extends PossibleKeys<Row> = ManualKey,
+  Indices extends PossibleIndices<Row> = Record<PropertyKey, never>,
 > = { row: Row; key: Key; indices: Indices };
 
 /** Database definition options. */
@@ -123,12 +117,24 @@ export function defineDatabase<Schema extends Record<string, object>>(options: D
       throw new Error(`Database "${name}" is being upgraded by another tab or window`);
     };
 
-    request.onupgradeneeded = function migrateDatabase(ev) {
+    request.onupgradeneeded = async function migrateDatabase(ev) {
       if (request.transaction == null) throw new Error('No transaction');
       const migrator = new DatabaseBuilder(request.transaction);
-      for (const migration of migrations.slice(ev.oldVersion)) {
-        migration(migrator);
-      }
+      await migrator.run(async (trx) => {
+        let version = ev.oldVersion;
+        let name = String(version);
+        try {
+          for (const migration of migrations.slice(ev.oldVersion)) {
+            version += 1;
+            name = migration.name ? migration.name : String(version);
+            await migration(trx);
+          }
+        } catch (err) {
+          const message = `Error in migration ${name}`;
+          console.error(`${message}:`, err);
+          throw new Error(message, { cause: err });
+        }
+      });
     };
 
     return new Database<Schema>(await waitOnRequest(request));
