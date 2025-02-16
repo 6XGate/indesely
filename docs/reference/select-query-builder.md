@@ -6,9 +6,17 @@ outline: deep
 
 ## count()
 
+## cursor()
+
+## keyCursor()
+
 ## \[Symbol.asyncIterator\]()
 
 ## stream()
+
+## streamKeys()
+
+## streamPrimaryKeys()
 
 ## getAll()
 

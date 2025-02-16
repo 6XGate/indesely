@@ -1,15 +1,25 @@
-import { DeleteQueryBuilder, InsertQueryBuilder, SelectQueryBuilder, UpdateQueryBuilder } from './builders.js';
+import { DeleteQueryBuilder, SelectQueryBuilder, UpdateQueryBuilder } from './builders.js';
 import { withResolvers } from './compat.js';
 import type { StoreIndices, StoreKey, StoreRow } from './utilities.js';
 import type { Promisable } from 'type-fest';
 
+/** An IndexedDB transaction. */
 export class Transaction {
-  readonly handle;
+  /**
+   * The transaction handle.
+   * @internal
+   */
+  protected readonly handle;
 
+  /** @internal */
   constructor(transaction: IDBTransaction) {
     this.handle = transaction;
   }
 
+  /**
+   * Runs a callback within the transaction.
+   * @internal
+   */
   async run<Result>(scope: (trx: this) => Promisable<Result>) {
     const { promise, resolve, reject } = withResolvers<Result>();
     const trx = this.handle;
@@ -56,18 +66,7 @@ export class ReadOnlyTransaction<Schema extends Record<string, object>> extends 
  */
 export class ReadWriteTransaction<Schema extends Record<string, object>> extends ReadOnlyTransaction<Schema> {
   /**
-   * Starts an insertion query within the transaction.
-   * @param store - The name of the object store.
-   * @returns A {@link InsertQueryBuilder} to build and execute an insertion query.
-   */
-  insertInto<Store extends keyof Schema>(store: Store) {
-    return new InsertQueryBuilder<StoreRow<Schema[Store]>, StoreKey<Schema[Store]>>(
-      this.handle.objectStore(String(store)),
-    );
-  }
-
-  /**
-   * Starts an update query within the transaction.
+   * Starts an insertion or update query within the transaction.
    * @param store - The name of the object store.
    * @returns A {@link UpdateQueryBuilder} to build and execute an update query.
    */

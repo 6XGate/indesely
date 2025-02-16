@@ -77,9 +77,9 @@ function sidebarReference(): SidebarItem[] {
       items: [
         { text: 'Transaction', link: 'transaction' },
         { text: 'SelectQueryBuilder', link: 'select-query-builder' },
-        { text: 'InsertQueryBuilder', link: 'insert-query-builder' },
         { text: 'UpdateQueryBuilder', link: 'update-query-builder' },
         { text: 'DeleteQueryBuilder', link: 'delete-query-builder' },
+        { text: 'Cursor', link: 'cursor' },
       ],
     },
   ];

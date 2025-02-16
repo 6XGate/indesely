@@ -17,6 +17,7 @@
     "noEmitHelpers": true,
     "allowSyntheticDefaultImports": true,
     "noUncheckedSideEffectImports": true,
-    "verbatimModuleSyntax": true
+    "verbatimModuleSyntax": true,
+    "stripInternal": true
   }
 }

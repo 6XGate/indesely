@@ -9,3 +9,9 @@ outline: deep
 ## createStore()
 
 ## dropStore()
+
+## Inherited from Transaction
+
+- [selectFrom()]()
+- [update()]()
+- [deleteFrom()]()

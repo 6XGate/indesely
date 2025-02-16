@@ -6,8 +6,6 @@ outline: deep
 
 ## selectFrom()
 
-## insertInto()
-
 ## update()
 
 ## deleteFrom()

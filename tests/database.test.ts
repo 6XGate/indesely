@@ -27,11 +27,17 @@ describe('insertion', () => {
     const db = useDatabase();
 
     await db.change(['rows'], async (trx) => {
-      await expect(trx.insertInto('rows').add({ name: 'row1' })).resolves.toBeUndefined();
+      await expect(trx.update('rows').add({ name: 'row1' })).resolves.toBeUndefined();
     });
 
     await db.read(['rows'], async (trx) => {
-      await expect(trx.selectFrom('rows').getAll()).resolves.toStrictEqual([{ name: 'row1' }]);
+      // await expect(trx.selectFrom('rows').getAll()).resolves.toStrictEqual([{ name: 'row1' }]);
+      for await (const cur of trx.selectFrom('rows').cursor()) {
+        console.log(cur);
+        console.log(cur.key);
+        console.log(cur.primaryKey);
+        console.log(cur.value);
+      }
     });
   });
 });

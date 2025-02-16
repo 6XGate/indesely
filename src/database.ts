@@ -10,8 +10,10 @@ import type { AutoIncrement, ManualKey, MemberPaths, UpgradingKey } from './util
  * @todo Add event handling support for the versionchange event.
  */
 class Database<Schema extends Record<string, object>> {
+  /** The database handle. */
   readonly #handle;
 
+  /** @internal */
   constructor(db: IDBDatabase) {
     this.#handle = db;
   }

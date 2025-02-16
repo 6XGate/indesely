@@ -4,6 +4,6 @@ outline: deep
 
 # Query API: DeleteQueryBuilder
 
-## delete()
+## everything()
 
 ## whereKey()

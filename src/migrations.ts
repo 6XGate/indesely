@@ -6,8 +6,10 @@ import type { Promisable } from 'type-fest';
 
 /** Store builder. */
 export class StoreBuilder {
+  /** The object store handle. */
   readonly #handle;
 
+  /** @internal */
   constructor(store: IDBObjectStore) {
     this.#handle = store;
   }
