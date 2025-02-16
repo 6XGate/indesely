@@ -17,7 +17,7 @@ export class Transaction {
   }
 
   /**
-   * Runs a callback within the transaction.
+   * Runs the callback {@link scope} within the transaction.
    * @internal
    */
   async run<Result>(scope: (trx: this) => Promisable<Result>) {
@@ -52,9 +52,9 @@ export class ReadOnlyTransaction<Schema extends Record<string, object>> extends 
    * @returns A {@link SelectQueryBuilder} to build and execute a selection query.
    */
   selectFrom<Store extends keyof Schema>(store: Store) {
-    return new SelectQueryBuilder<StoreRow<Schema[Store]>, StoreKey<Schema[Store]>, StoreIndices<Schema[Store]>>(
-      this.handle.objectStore(String(store)),
-    );
+    return new SelectQueryBuilder<StoreRow<Schema[Store]>, StoreKey<Schema[Store]>, StoreIndices<Schema[Store]>>({
+      store: this.handle.objectStore(String(store)),
+    });
   }
 }
 

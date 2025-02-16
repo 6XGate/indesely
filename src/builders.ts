@@ -27,13 +27,13 @@ type KeyOf<Row extends object, Key> =
 /** Gets the necessary _add_ and _put_ parameters for a row. */
 type UpdateArgsFor<Row extends object, Key> =
   Key extends MemberPaths<Row>
-    ? [document: Row]
+    ? [record: Row]
     : Key extends AutoIncrement
-      ? [document: Row]
+      ? [record: Row]
       : Key extends ManualKey
-        ? [document: Row, key: IDBValidKey]
+        ? [record: Row, key: IDBValidKey]
         : Key extends UpgradingKey
-          ? [document: Row, key?: IDBValidKey]
+          ? [record: Row, key?: IDBValidKey]
           : never;
 
 async function waitForRow<Row>(request: IDBRequest<Row | undefined>) {
@@ -42,24 +42,32 @@ async function waitForRow<Row>(request: IDBRequest<Row | undefined>) {
 }
 
 /**
- * Read query builder.
- *
- * @todo Support cursor advancement via keys, which will likely be a different method from {@link stream}.
+ * Selection query builder options.
+ * @internal
  */
+interface SelectQueryOptions<Indices> {
+  store: IDBObjectStore;
+  range?: IDBKeyRange | null | undefined;
+  index?: [name: keyof Indices, range: IDBKeyRange] | null | undefined;
+}
+
+/** Read query builder. */
 export class SelectQueryBuilder<Row extends object, Key, Indices extends object, CursorKey = Key> {
   /** IndexedDB {@link IDBObjectStore} handle. */
   readonly #handle;
   /** Select by key range. */
-  #range: IDBKeyRange | null = null;
+  #range;
   /** Select by index range. */
-  #index: [name: keyof Indices, range: IDBKeyRange] | null = null;
+  #index;
 
   /** @internal */
-  constructor(store: IDBObjectStore) {
+  constructor({ store, range = null, index = null }: SelectQueryOptions<Indices>) {
     this.#handle = store;
+    this.#range = range;
+    this.#index = index;
   }
 
-  /** Gets the number of documents that matches the query. */
+  /** Gets the number of records that matches the query. */
   async count() {
     if (this.#range != null) {
       return await waitOnRequest(this.#handle.count(this.#range));
@@ -73,7 +81,7 @@ export class SelectQueryBuilder<Row extends object, Key, Indices extends object,
     return await waitOnRequest(this.#handle.count());
   }
 
-  /** Iterator a cursor for all documents that match the query via an asynchronous iterator. */
+  /** Iterator a cursor for all records that match the query via an asynchronous iterator. */
   async *cursor(direction?: IDBCursorDirection) {
     let request;
     if (this.#index != null) {
@@ -88,7 +96,7 @@ export class SelectQueryBuilder<Row extends object, Key, Indices extends object,
     yield* cursor;
   }
 
-  /** Iterator a key cursor for all documents that match the query via an asynchronous iterator. */
+  /** Iterator a key cursor for all records that match the query via an asynchronous iterator. */
   async *keyCursor(direction?: IDBCursorDirection) {
     let request;
     if (this.#index != null) {
@@ -108,7 +116,7 @@ export class SelectQueryBuilder<Row extends object, Key, Indices extends object,
     return this.stream();
   }
 
-  /** Streams all documents that match the query via an asynchronous iterator. */
+  /** Streams all records that match the query via an asynchronous iterator. */
   async *stream(direction?: IDBCursorDirection): AsyncGenerator<Row, void, number | undefined> {
     for await (const cursor of this.cursor(direction)) {
       const advance = yield cursor.value;
@@ -116,7 +124,7 @@ export class SelectQueryBuilder<Row extends object, Key, Indices extends object,
     }
   }
 
-  /** Streams all keys for documents that match the query via an asynchronous iterator. */
+  /** Streams all keys for records that match the query via an asynchronous iterator. */
   async *streamKeys(direction?: IDBCursorDirection): AsyncGenerator<KeyOf<Row, CursorKey>, void, number | undefined> {
     for await (const cursor of this.cursor(direction)) {
       const advance = yield cursor.key;
@@ -124,7 +132,7 @@ export class SelectQueryBuilder<Row extends object, Key, Indices extends object,
     }
   }
 
-  /** Streams all primary keys for documents that match the query via an asynchronous iterator. */
+  /** Streams all primary keys for records that match the query via an asynchronous iterator. */
   async *streamPrimaryKeys(direction?: IDBCursorDirection): AsyncGenerator<KeyOf<Row, Key>, void, number | undefined> {
     for await (const cursor of this.cursor(direction)) {
       const advance = yield cursor.primaryKey;
@@ -132,7 +140,7 @@ export class SelectQueryBuilder<Row extends object, Key, Indices extends object,
     }
   }
 
-  /** Gets the documents that match the query. */
+  /** Gets the records that match the query. */
   async getAll(count?: number) {
     if (this.#range != null) {
       return await waitOnRequest(this.#handle.getAll<Row>(this.#range, count));
@@ -146,7 +154,7 @@ export class SelectQueryBuilder<Row extends object, Key, Indices extends object,
     return await waitOnRequest(this.#handle.getAll<Row>(null, count));
   }
 
-  /** Gets the first document that matches the query, or `null` if none matches. */
+  /** Gets the first record that matches the query, or `null` if none matches. */
   async getFirst() {
     if (this.#range != null) {
       return await waitForRow(this.#handle.get<Row>(this.#range));
@@ -161,7 +169,7 @@ export class SelectQueryBuilder<Row extends object, Key, Indices extends object,
   }
 
   /**
-   * Gets the first document that matches the query, or throws if none matches.
+   * Gets the first record that matches the query, or throws if none matches.
    * @param error - Optional error constructor or factory.
    */
   async getFirstOrThrow(error?: typeof Error | (() => Error)) {
@@ -171,17 +179,17 @@ export class SelectQueryBuilder<Row extends object, Key, Indices extends object,
     }
 
     if (typeof error !== 'function') {
-      throw new Error('No document not found');
+      throw new Error('No record found');
     }
 
     if (isClass<Error>(error)) {
-      throw new error('No document not found');
+      throw new error('No record found');
     }
 
     throw error();
   }
 
-  /** Gets the primary keys for documents that match the query. */
+  /** Gets the primary keys for records that match the query. */
   async getAllKeys(count?: number) {
     type PK = MemberType<Row, Key>;
 
@@ -197,7 +205,7 @@ export class SelectQueryBuilder<Row extends object, Key, Indices extends object,
     return await waitOnRequest(this.#handle.getAllKeys<PK>(null, count));
   }
 
-  /** Gets the primary key for the first document that matches the query, or `null` if none matches. */
+  /** Gets the primary key for the first record that matches the query, or `null` if none matches. */
   async getFirstKey() {
     type PK = MemberType<Row, Key>;
 
@@ -214,7 +222,7 @@ export class SelectQueryBuilder<Row extends object, Key, Indices extends object,
   }
 
   /**
-   * Gets the primary key for the first document that matches the query, or throws if none matches.
+   * Gets the primary key for the first record that matches the query, or throws if none matches.
    * @param error - Optional error constructor or factory.
    */
   async getFirstKeyOrThrow(error?: typeof Error | (() => Error)) {
@@ -224,11 +232,11 @@ export class SelectQueryBuilder<Row extends object, Key, Indices extends object,
     }
 
     if (typeof error !== 'function') {
-      throw new Error('No document not found');
+      throw new Error('No record found');
     }
 
     if (isClass<Error>(error)) {
-      throw new error('No document not found');
+      throw new error('No record found');
     }
 
     throw error();
@@ -262,7 +270,7 @@ export class SelectQueryBuilder<Row extends object, Key, Indices extends object,
   ): Omit<SelectQueryBuilder<Row, Key, Indices, Indices[Index]>, Where>;
   /** The {@link where} implementation. */
   where<Index extends keyof Indices>(
-    index: Index,
+    name: Index,
     op: Operators,
     first: MemberType<Row, Indices[Index]>,
     last?: MemberType<Row, Indices[Index]>,
@@ -271,39 +279,41 @@ export class SelectQueryBuilder<Row extends object, Key, Indices extends object,
       throw new SyntaxError('where clause cannot be redefined');
     }
 
+    const store = this.#handle;
+    let index: [Index, IDBKeyRange];
     switch (op) {
       case '=':
-        this.#index = [index, IDBKeyRange.only(first)];
-        return this;
+        index = [name, IDBKeyRange.only(first)];
+        return new SelectQueryBuilder<Row, Key, Indices, Indices[Index]>({ store, index });
       case '<':
-        this.#index = [index, IDBKeyRange.upperBound(first, true)];
-        return this;
+        index = [name, IDBKeyRange.upperBound(first, true)];
+        return new SelectQueryBuilder<Row, Key, Indices, Indices[Index]>({ store, index });
       case '<=':
-        this.#index = [index, IDBKeyRange.upperBound(first)];
-        return this;
+        index = [name, IDBKeyRange.upperBound(first)];
+        return new SelectQueryBuilder<Row, Key, Indices, Indices[Index]>({ store, index });
       case '>=':
-        this.#index = [index, IDBKeyRange.lowerBound(first)];
-        return this;
+        index = [name, IDBKeyRange.lowerBound(first)];
+        return new SelectQueryBuilder<Row, Key, Indices, Indices[Index]>({ store, index });
       case '>':
-        this.#index = [index, IDBKeyRange.lowerBound(first, true)];
-        return this;
+        index = [name, IDBKeyRange.lowerBound(first, true)];
+        return new SelectQueryBuilder<Row, Key, Indices, Indices[Index]>({ store, index });
     }
 
     if (last == null) throw new SyntaxError(`Missing upper bounds for "${op}" operator`);
 
     switch (op) {
       case '[]':
-        this.#index = [index, IDBKeyRange.bound(first, last, false, false)];
-        return this;
+        index = [name, IDBKeyRange.bound(first, last, false, false)];
+        return new SelectQueryBuilder<Row, Key, Indices, Indices[Index]>({ store, index });
       case '(]':
-        this.#index = [index, IDBKeyRange.bound(first, last, true, false)];
-        return this;
+        index = [name, IDBKeyRange.bound(first, last, true, false)];
+        return new SelectQueryBuilder<Row, Key, Indices, Indices[Index]>({ store, index });
       case '()':
-        this.#index = [index, IDBKeyRange.bound(first, last, true, true)];
-        return this;
+        index = [name, IDBKeyRange.bound(first, last, true, true)];
+        return new SelectQueryBuilder<Row, Key, Indices, Indices[Index]>({ store, index });
       case '[)':
-        this.#index = [index, IDBKeyRange.bound(first, last, false, true)];
-        return this;
+        index = [name, IDBKeyRange.bound(first, last, false, true)];
+        return new SelectQueryBuilder<Row, Key, Indices, Indices[Index]>({ store, index });
       default:
         throw new SyntaxError(`Unknown operator ${String(op)}`);
     }
@@ -315,7 +325,7 @@ export class SelectQueryBuilder<Row extends object, Key, Indices extends object,
    * @param value - The value with which to compare the primary key.
    * @returns This {@link SelectQueryBuilder} instance.
    */
-  whereKey(op: Compares, value: KeyOf<Row, Key>): Omit<this, Where>;
+  whereKey(op: Compares, value: KeyOf<Row, Key>): Omit<SelectQueryBuilder<Row, Key, Indices>, Where>;
   /**
    * Adds a where clause to the query to compares the primary key with a bounds.
    * @param op - The bounds operation.
@@ -323,46 +333,52 @@ export class SelectQueryBuilder<Row extends object, Key, Indices extends object,
    * @param upper - The upper bounds with which to compare the primary key.
    * @returns This {@link SelectQueryBuilder} instance.
    */
-  whereKey(op: Bounds, lower: KeyOf<Row, Key>, upper: KeyOf<Row, Key>): Omit<this, Where>;
+  whereKey(
+    op: Bounds,
+    lower: KeyOf<Row, Key>,
+    upper: KeyOf<Row, Key>,
+  ): Omit<SelectQueryBuilder<Row, Key, Indices>, Where>;
   /** The {@link whereKey} implementation. */
   whereKey(op: Operators, first: KeyOf<Row, Key>, last?: KeyOf<Row, Key>) {
     if (this.#range != null || this.#index != null) {
       throw new SyntaxError('where clause cannot be redefined');
     }
 
+    const store = this.#handle;
+    let range: IDBKeyRange;
     switch (op) {
       case '=':
-        this.#range = IDBKeyRange.only(first);
-        return this;
+        range = IDBKeyRange.only(first);
+        return new SelectQueryBuilder<Row, Key, Indices>({ store, range });
       case '<':
-        this.#range = IDBKeyRange.upperBound(first, true);
-        return this;
+        range = IDBKeyRange.upperBound(first, true);
+        return new SelectQueryBuilder<Row, Key, Indices>({ store, range });
       case '<=':
-        this.#range = IDBKeyRange.upperBound(first);
-        return this;
+        range = IDBKeyRange.upperBound(first);
+        return new SelectQueryBuilder<Row, Key, Indices>({ store, range });
       case '>=':
-        this.#range = IDBKeyRange.lowerBound(first);
-        return this;
+        range = IDBKeyRange.lowerBound(first);
+        return new SelectQueryBuilder<Row, Key, Indices>({ store, range });
       case '>':
-        this.#range = IDBKeyRange.lowerBound(first, true);
-        return this;
+        range = IDBKeyRange.lowerBound(first, true);
+        return new SelectQueryBuilder<Row, Key, Indices>({ store, range });
     }
 
     if (last == null) throw new SyntaxError('Missing upper bounds');
 
     switch (op) {
       case '[]':
-        this.#range = IDBKeyRange.bound(first, last, false, false);
-        return this;
+        range = IDBKeyRange.bound(first, last, false, false);
+        return new SelectQueryBuilder<Row, Key, Indices>({ store, range });
       case '(]':
-        this.#range = IDBKeyRange.bound(first, last, true, false);
-        return this;
+        range = IDBKeyRange.bound(first, last, true, false);
+        return new SelectQueryBuilder<Row, Key, Indices>({ store, range });
       case '()':
-        this.#range = IDBKeyRange.bound(first, last, true, true);
-        return this;
+        range = IDBKeyRange.bound(first, last, true, true);
+        return new SelectQueryBuilder<Row, Key, Indices>({ store, range });
       case '[)':
-        this.#range = IDBKeyRange.bound(first, last, false, true);
-        return this;
+        range = IDBKeyRange.bound(first, last, false, true);
+        return new SelectQueryBuilder<Row, Key, Indices>({ store, range });
       default:
         throw new SyntaxError(`Unknown operator ${String(op)}`);
     }
@@ -383,14 +399,16 @@ export class UpdateQueryBuilder<Row extends object, Key> {
     this.#handle = store;
   }
 
-  /** Adds a document to the store. */
-  async add(...[document, key]: UpdateArgsFor<Row, Key>) {
-    await waitOnRequest(this.#handle.add(document, key));
+  /** Adds a record to the store. */
+  async add(...[record, key]: UpdateArgsFor<Row, Key>) {
+    const result = await waitOnRequest(this.#handle.add(record, key));
+    return result as KeyOf<Row, Key>;
   }
 
-  /** Adds or updates a document to or in the store. */
-  async put(...[document, key]: UpdateArgsFor<Row, Key>) {
-    await waitOnRequest(this.#handle.put(document, key));
+  /** Adds or updates a record to or in the store. */
+  async put(...[record, key]: UpdateArgsFor<Row, Key>) {
+    const result = await waitOnRequest(this.#handle.put(record, key));
+    return result as KeyOf<Row, Key>;
   }
 }
 

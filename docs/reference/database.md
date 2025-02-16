@@ -10,16 +10,21 @@ outline: deep
 
   ```ts
   type DatabaseFactory = () => Database;
+  const useDatabase: DatabaseFactory;
   ```
 
-  Creates a connection to a database.
+  Creates a connection to a database. The name of these functions defined by the caller of [`defineDatabase`](management#definedatabase).
+
+- **Returns**
+
+  Returns a Database handle use to interact with the database.
 
 ## getName()
 
 - **Summary**
 
   ```ts
-  getName(): Promise<string>;
+  db.getName(): Promise<string>;
   ```
 
   Gets the database name.
@@ -29,17 +34,17 @@ outline: deep
 - **Summary**
 
   ```ts
-  getVersion(): Promise<number>;
+  db.getVersion(): Promise<number>;
   ```
 
-  Gets the database version.
+  Gets the database version. With Indesely, the version is used as a means to track which migrations have been run on the database.
 
 ## getStores()
 
 - **Summary**
 
   ```ts
-  getStores(): Promise<string[]>;
+  db.getStores(): Promise<string[]>;
   ```
 
   Gets the name of all the object stores.
@@ -49,7 +54,7 @@ outline: deep
 - **Summary**
 
   ```ts
-  read<Stores, Result>(stores: Stores[], scope: (trx: Transaction) => Promise<Result>): Promise<Result>;
+  db.read<Stores, Result>(stores: Stores[], scope: (trx: Transaction) => Promise<Result>): Promise<Result>;
   ```
 
   Starts a read-only transaction.
@@ -58,7 +63,12 @@ outline: deep
 
   - `stores` — The names of the stores to utilize in the transaction.
   - `scope` — Callback that will perform database operations.
-    - `trx` — The [transaction](transaction) to use.
+    - `trx` — The [Transaction](transaction) to use.
+
+- **Type Parameters**
+
+  - `Stores` — The stores from which to read.
+  - `Result` — The result returned from `scope`.
 
 - **Returns**
 
@@ -69,7 +79,7 @@ outline: deep
 - **Summary**
 
   ```ts
-  change<Stores, Result>(stores: Stores[], scope: (trx: Transaction) => Promise<Result>): Promise<Result>;
+  db.change<Stores, Result>(stores: Stores[], scope: (trx: Transaction) => Promise<Result>): Promise<Result>;
   ```
 
   Starts a read-write transaction.
@@ -78,7 +88,12 @@ outline: deep
 
   - `stores` — The names of the stores to utilize in the transaction.
   - `scope` — Callback that will perform database operations.
-    - `trx` — The [transaction](transaction) to use.
+    - `trx` — The [Transaction](transaction) to use.
+
+- **Type Parameters**
+
+  - `Stores` — The stores from which to modify.
+  - `Result` — The result returned from `scope`.
 
 - **Returns**
 

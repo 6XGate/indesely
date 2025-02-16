@@ -76,6 +76,7 @@ function sidebarReference(): SidebarItem[] {
       text: 'Query API',
       items: [
         { text: 'Transaction', link: 'transaction' },
+        { text: 'Where Operator', link: 'where-operators' },
         { text: 'SelectQueryBuilder', link: 'select-query-builder' },
         { text: 'UpdateQueryBuilder', link: 'update-query-builder' },
         { text: 'DeleteQueryBuilder', link: 'delete-query-builder' },

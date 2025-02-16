@@ -43,10 +43,9 @@ outline: deep
   - `options` — The database definition options.
     - `name` — The name of the database.
     - `migrations` — An array of [Migration](migrations#migration) function.
-    - `persist` — Request that the user agent persist the database, even under
-      [storage pressure](https://developer.mozilla.org/docs/Web/API/Storage_API/Storage_quotas_and_eviction_criteria#when_is_data_evicted).
+    - `persist` — Request that the user agent persist the database, even under [storage pressure](https://developer.mozilla.org/docs/Web/API/Storage_API/Storage_quotas_and_eviction_criteria#when_is_data_evicted).
 
-- **Types**
+- **Type Parameters**
 
   - `Schema` — The definition of the [object store schemas](schema).
 

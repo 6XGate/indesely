@@ -23,22 +23,29 @@ export class Cursor<Row, Key, PrimaryKey, Input extends IDBCursor | IDBCursorWit
     };
   }
 
-  /** Gets the index key, or primary key when not using an index, of the current document pointed to by the cursor. */
+  /** Gets the index key, or primary key when not using an index, of the current record pointed to by the cursor. */
   get key() {
     return this.handle.key as Key;
   }
 
-  /** Gets the primary key of the current document pointed to by the cursor. */
+  /** Gets the primary key of the current record pointed to by the cursor. */
   get primaryKey() {
     return this.handle.primaryKey as PrimaryKey;
   }
 
-  /** Advances the cursor {@link count} number of iteration. */
+  /**
+   * Advances the cursor a given number of iteration.
+   * @param count - The number of iterations to advance the cursor.
+   */
   advance(count: number) {
     this.#next = () => this.handle.advance(count);
   }
 
-  /** Continues to the next {@link key}; and optionally, {@link primaryKey} */
+  /**
+   * Continues to the next record that matches the provided keys.
+   * @param key - The key at which to position the cursor.
+   * @param primaryKey - The primary key at which to position the cursor.
+   */
   continue(key: Key, primaryKey?: PrimaryKey) {
     this.#next =
       primaryKey != null
@@ -46,14 +53,19 @@ export class Cursor<Row, Key, PrimaryKey, Input extends IDBCursor | IDBCursorWit
         : () => this.handle.continuePrimaryKey(key as IDBValidKey, primaryKey as IDBValidKey);
   }
 
-  /** Deletes the current document pointed to by the cursor. */
+  /** Deletes the current record pointed to by the cursor. */
   async delete() {
     await waitOnRequest(this.handle.delete());
   }
 
-  /** Updates the current document pointed to by the cursor. */
-  async update(document: Row) {
-    const key = await waitOnRequest(this.handle.update(document));
+  /**
+   * Updates the current record pointed to by the cursor.
+   * @param record - The record with which to replace the current record.
+   * @returns - The key for the updated record.
+   */
+  async update(record: Row) {
+    const key = await waitOnRequest(this.handle.update(record));
+    // TODO: Test if this is the primary or index key.
     return key as Key;
   }
 

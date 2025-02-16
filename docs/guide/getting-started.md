@@ -4,15 +4,11 @@ outline: deep
 
 # Getting Starting
 
-To use Indesely, your application must run on a modern web browser, or similar
-application framework, that supports IndexedDB. Indesely is provided as a
-ECMAScript library via NPM. It may be used with any bundler that
-supports ESM or used directly by your web application.
+To use Indesely, your application must run on a modern web browser, or similar application framework, that supports IndexedDB. Indesely is provided as a ECMAScript library via NPM. It may be used with any bundler that supports ESM or used directly by your web application.
 
 ## Installing
 
-To install and use Indesely via NPM, you must have node.js and your favorite
-package manager installed.
+To install and use Indesely via NPM, you must have node.js and your favorite package manager installed.
 
 ::: code-group
 
@@ -32,9 +28,7 @@ pnpm install --dev indesely
 
 ## Quick Example
 
-To use the type-safe facilities of Indesely, you will need to defined a model
-and provide information about your database's object stores. Then define
-a schema for your database based on the names of your object stores.
+To use the type-safe facilities of Indesely, you will need to defined a model and provide information about your database's object stores. Then define a schema for your database based on the names of your object stores.
 
 ### Models, Keys, and Indices
 
@@ -55,8 +49,7 @@ interface Department {
 }
 ```
 
-Next, you'll need to provide the basic information about your object store's
-keys an indices.
+Next, you'll need to provide the basic information about your object store's keys an indices.
 
 ```ts [models.ts]
 interface Employee {
@@ -76,9 +69,7 @@ type Departments = Store<Department, 'id'>;
 
 ### Database Schema
 
-Once your models and object store information is defined, you can then define
-your database schema. This will tell Indesely what the names of your object
-stores are and what structure they have.
+Once your models and object store information is defined, you can then define your database schema. This will tell Indesely what the names of your object stores are and what structure they have.
 
 ```ts [employment.ts]
 interface Employment {
@@ -87,8 +78,7 @@ interface Employment {
 }
 ```
 
-With that, you can then defined a factory for your database, with some basic
-migrations to set up the structure.
+With that, you can then defined a factory for your database, with some basic migrations to set up the structure.
 
 ```ts [employment.ts]
 interface Employment {
@@ -109,9 +99,7 @@ const useEmploymentDatabase = defineDatabase<Employment>({
 
 ### Connection
 
-Once you've defined the database. You need to connect to it, in a sense.
-IndexedDB's idea of a connection isn't the same as most RDBMSs, it's
-really a handle or descriptor to the database like SQLite.
+Once you've defined the database. You need to connect to it, in a sense. IndexedDB's idea of a connection isn't the same as most RDBMSs, it's really a handle or descriptor to the database like SQLite.
 
 ```ts [seed.ts]
 const db = useEmploymentDatabase();
@@ -119,13 +107,9 @@ const db = useEmploymentDatabase();
 
 ### Writing Data
 
-Now that you have a database, it needs some data to be useful. Adding objects
-to it is almost as easy as using local storage. You just have to start a
-read/write transaction. With IndexedDB, you have to tell it to which
-stores you want to write, and you must with Indesely too.
+Now that you have a database, it needs some data to be useful. Adding objects to it is almost as easy as using local storage. You just have to start a read/write transaction. With IndexedDB, you have to tell it to which stores you want to write, and you must with Indesely too.
 
-Indesely will even give you a type-safe check when you start an operations
-to ensure you request a change or read from those stores.
+Indesely will even give you a type-safe check when you start an operations to ensure you request a change or read from those stores.
 
 ```ts [seed.ts]
 // ...
@@ -142,10 +126,7 @@ await db.change(['employees', 'departments'], async (trx) => {
 
 ### Reading Data
 
-Now that you've put data in your database stores, you can query that data.
-IndexedDB, while powerful, doesn't support a very complex query
-language. It only has a few operations on keys and indices
-and the ability to define a range or value to query.
+Now that you've put data in your database stores, you can query that data. IndexedDB, while powerful, doesn't support a very complex query language. It only has a few operations on keys and indices and the ability to define a range or value to query.
 
 Say you want everyone in the Product departments.
 
@@ -164,18 +145,13 @@ console.log(productFolks);
 
 ## Learning More
 
-Now that you've seen the basic concepts of Indesely, you can learn more in depth
-information about the it and its API.
+Now that you've seen the basic concepts of Indesely, you can learn more in depth information about the it and its API.
 
 For more about the core concepts;
 
-- To better understand defining models, the keys of models, the indices of
-  an object store, and the schema of a database; read the guide for
-  [Defining the Schema](defining-the-schema).
-- To learn how write migrations to upgrade your database with each new version,
-  read about [Migrations](migrations).
-- To learn all about reading data from object store, or writing data to them;
-  read about [Reading and Writing Data](reading-and-writing-data).
+- To better understand defining models, the keys of models, the indices of an object store, and the schema of a database; read the guide for [Defining the Schema](defining-the-schema).
+- To learn how write migrations to upgrade your database with each new version, read about [Migrations](migrations).
+- To learn all about reading data from object store, or writing data to them; read about [Reading and Writing Data](reading-and-writing-data).
 
 Once you understand the core concepts;
 

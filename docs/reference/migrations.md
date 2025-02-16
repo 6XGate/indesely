@@ -16,4 +16,4 @@ outline: deep
 
 - **Parameters**
 
-  - `transaction` — The [DatabaseBuilder](database-builder) to use in the transaction.
+  - `transaction` — The [DatabaseBuilder](database-builder) transaction to use in the migration. Unlike normal transactions, migration transactions do not enforce schema type information.
