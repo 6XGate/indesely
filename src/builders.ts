@@ -1,6 +1,7 @@
 import { KeyCursor, ValueCursor } from './cursor.js';
+import { ObjectStore } from './schema.js';
 import { isClass, waitOnRequest } from './utilities.js';
-import type { AutoIncrement, ManualKey, MemberPaths, MemberType, UpgradingKey } from './utilities.js';
+import type { AutoIncrement, KeyOf, ManualKey, MemberPaths, MemberType, UpgradingKey } from './schema.js';
 
 /** Comparison operators of the where clause. */
 type Compares = '=' | '<' | '<=' | '>=' | '>';
@@ -12,34 +13,26 @@ type Operators = Compares | Bounds;
 /** Where clause functions, use to exclude them from the builder when once called. */
 type Where = 'whereKey' | 'where';
 
-/** Gets the type of the key of a row */
-type KeyOf<Row extends object, Key> =
-  Key extends MemberPaths<Row>
-    ? MemberType<Row, Key>
-    : Key extends AutoIncrement
-      ? number
-      : Key extends ManualKey
-        ? IDBValidKey
-        : Key extends UpgradingKey
-          ? IDBValidKey
-          : never;
-
 /** Gets the necessary _add_ and _put_ parameters for a row. */
-type UpdateArgsFor<Row extends object, Key> =
-  Key extends MemberPaths<Row>
-    ? [record: Row]
-    : Key extends AutoIncrement
-      ? [record: Row]
-      : Key extends ManualKey
-        ? [record: Row, key: IDBValidKey]
-        : Key extends UpgradingKey
-          ? [record: Row, key?: IDBValidKey]
+export type UpdateArgsFor<Row extends object, Key> = Key extends AutoIncrement
+  ? [record: Row]
+  : Key extends ManualKey
+    ? [record: Row, key: IDBValidKey]
+    : Key extends UpgradingKey
+      ? [record: Row, key?: IDBValidKey]
+      : Key extends MemberPaths<Row>[]
+        ? [record: Row]
+        : Key extends MemberPaths<Row>
+          ? [record: Row]
           : never;
 
 async function waitForRow<Row>(request: IDBRequest<Row | undefined>) {
   const row = await waitOnRequest(request);
   return row ?? null;
 }
+
+type ErrorFactory = (...args: ConstructorParameters<typeof Error>) => Error;
+type ErrorSource = typeof Error | ErrorFactory;
 
 /**
  * Selection query builder options.
@@ -52,9 +45,7 @@ interface SelectQueryOptions<Indices> {
 }
 
 /** Read query builder. */
-export class SelectQueryBuilder<Row extends object, Key, Indices extends object, CursorKey = Key> {
-  /** IndexedDB {@link IDBObjectStore} handle. */
-  readonly #handle;
+export class SelectQueryBuilder<Row extends object, Key, Indices extends object, CursorKey = Key> extends ObjectStore {
   /** Select by key range. */
   #range;
   /** Select by index range. */
@@ -62,7 +53,7 @@ export class SelectQueryBuilder<Row extends object, Key, Indices extends object,
 
   /** @internal */
   constructor({ store, range = null, index = null }: SelectQueryOptions<Indices>) {
-    this.#handle = store;
+    super(store);
     this.#range = range;
     this.#index = index;
   }
@@ -70,25 +61,28 @@ export class SelectQueryBuilder<Row extends object, Key, Indices extends object,
   /** Gets the number of records that matches the query. */
   async count() {
     if (this.#range != null) {
-      return await waitOnRequest(this.#handle.count(this.#range));
+      return await waitOnRequest(this.handle.count(this.#range));
     }
 
     if (this.#index != null) {
       const [name, range] = this.#index;
-      return await waitOnRequest(this.#handle.index(String(name)).count(range));
+      return await waitOnRequest(this.handle.index(String(name)).count(range));
     }
 
-    return await waitOnRequest(this.#handle.count());
+    return await waitOnRequest(this.handle.count());
   }
 
-  /** Iterator a cursor for all records that match the query via an asynchronous iterator. */
+  /**
+   * Iterator a cursor for all records that match the query via an asynchronous iterator.
+   * @param direction - The direction to stream the primary keys.
+   */
   async *cursor(direction?: IDBCursorDirection) {
     let request;
     if (this.#index != null) {
       const [name, range] = this.#index;
-      request = this.#handle.index(String(name)).openCursor(range, direction);
+      request = this.handle.index(String(name)).openCursor(range, direction);
     } else {
-      request = this.#handle.openCursor(this.#range, direction);
+      request = this.handle.openCursor(this.#range, direction);
     }
 
     const cursor = new ValueCursor<Row, KeyOf<Row, CursorKey>, KeyOf<Row, Key>>(request);
@@ -96,14 +90,17 @@ export class SelectQueryBuilder<Row extends object, Key, Indices extends object,
     yield* cursor;
   }
 
-  /** Iterator a key cursor for all records that match the query via an asynchronous iterator. */
+  /**
+   * Iterator a key cursor for all records that match the query via an asynchronous iterator.
+   * @param direction - The direction to stream the primary keys.
+   */
   async *keyCursor(direction?: IDBCursorDirection) {
     let request;
     if (this.#index != null) {
       const [name, range] = this.#index;
-      request = this.#handle.index(String(name)).openKeyCursor(range, direction);
+      request = this.handle.index(String(name)).openKeyCursor(range, direction);
     } else {
-      request = this.#handle.openKeyCursor(this.#range, direction);
+      request = this.handle.openKeyCursor(this.#range, direction);
     }
 
     const cursor = new KeyCursor<Row, KeyOf<Row, CursorKey>, KeyOf<Row, Key>>(request);
@@ -116,7 +113,10 @@ export class SelectQueryBuilder<Row extends object, Key, Indices extends object,
     return this.stream();
   }
 
-  /** Streams all records that match the query via an asynchronous iterator. */
+  /**
+   * Streams all records that match the query via an asynchronous iterator.
+   * @param direction - The direction to stream the primary keys.
+   */
   async *stream(direction?: IDBCursorDirection): AsyncGenerator<Row, void, number | undefined> {
     for await (const cursor of this.cursor(direction)) {
       const advance = yield cursor.value;
@@ -124,7 +124,10 @@ export class SelectQueryBuilder<Row extends object, Key, Indices extends object,
     }
   }
 
-  /** Streams all keys for records that match the query via an asynchronous iterator. */
+  /**
+   * Streams all keys for records that match the query via an asynchronous iterator.
+   * @param direction - The direction to stream the primary keys.
+   */
   async *streamKeys(direction?: IDBCursorDirection): AsyncGenerator<KeyOf<Row, CursorKey>, void, number | undefined> {
     for await (const cursor of this.cursor(direction)) {
       const advance = yield cursor.key;
@@ -132,7 +135,10 @@ export class SelectQueryBuilder<Row extends object, Key, Indices extends object,
     }
   }
 
-  /** Streams all primary keys for records that match the query via an asynchronous iterator. */
+  /**
+   * Streams all primary keys for records that match the query via an asynchronous iterator.
+   * @param direction - The direction to stream the primary keys.
+   */
   async *streamPrimaryKeys(direction?: IDBCursorDirection): AsyncGenerator<KeyOf<Row, Key>, void, number | undefined> {
     for await (const cursor of this.cursor(direction)) {
       const advance = yield cursor.primaryKey;
@@ -140,29 +146,32 @@ export class SelectQueryBuilder<Row extends object, Key, Indices extends object,
     }
   }
 
-  /** Gets the records that match the query. */
+  /**
+   * Gets the records that match the query.
+   * @param count - The maximum number of record to retrieve if specified.
+   */
   async getAll(count?: number) {
     if (this.#range != null) {
-      return await waitOnRequest(this.#handle.getAll<Row>(this.#range, count));
+      return await waitOnRequest(this.handle.getAll<Row>(this.#range, count));
     }
 
     if (this.#index != null) {
       const [name, range] = this.#index;
-      return await waitOnRequest(this.#handle.index(String(name)).getAll<Row>(range, count));
+      return await waitOnRequest(this.handle.index(String(name)).getAll<Row>(range, count));
     }
 
-    return await waitOnRequest(this.#handle.getAll<Row>(null, count));
+    return await waitOnRequest(this.handle.getAll<Row>(null, count));
   }
 
   /** Gets the first record that matches the query, or `null` if none matches. */
   async getFirst() {
     if (this.#range != null) {
-      return await waitForRow(this.#handle.get<Row>(this.#range));
+      return await waitForRow(this.handle.get<Row>(this.#range));
     }
 
     if (this.#index != null) {
       const [name, range] = this.#index;
-      return await waitForRow(this.#handle.index(String(name)).get<Row>(range));
+      return await waitForRow(this.handle.index(String(name)).get<Row>(range));
     }
 
     throw new SyntaxError('Missing where clause');
@@ -172,13 +181,14 @@ export class SelectQueryBuilder<Row extends object, Key, Indices extends object,
    * Gets the first record that matches the query, or throws if none matches.
    * @param error - Optional error constructor or factory.
    */
-  async getFirstOrThrow(error?: typeof Error | (() => Error)) {
+  async getFirstOrThrow(error?: ErrorSource) {
     const result = await this.getFirst();
     if (result != null) {
       return result;
     }
 
-    if (typeof error !== 'function') {
+    if (error == null) {
+      // }  typeof error !== 'function') {
       throw new Error('No record found');
     }
 
@@ -186,36 +196,39 @@ export class SelectQueryBuilder<Row extends object, Key, Indices extends object,
       throw new error('No record found');
     }
 
-    throw error();
+    throw error('No record found');
   }
 
-  /** Gets the primary keys for records that match the query. */
+  /**
+   * Gets the primary keys for records that match the query.
+   * @param count - The maximum number of keys to retrieve if specified.
+   */
   async getAllKeys(count?: number) {
-    type PK = MemberType<Row, Key>;
+    type PK = KeyOf<Row, Key>;
 
     if (this.#range != null) {
-      return await waitOnRequest(this.#handle.getAllKeys<PK>(this.#range, count));
+      return await waitOnRequest(this.handle.getAllKeys<PK>(this.#range, count));
     }
 
     if (this.#index != null) {
       const [name, range] = this.#index;
-      return await waitOnRequest(this.#handle.index(String(name)).getAllKeys<PK>(range, count));
+      return await waitOnRequest(this.handle.index(String(name)).getAllKeys<PK>(range, count));
     }
 
-    return await waitOnRequest(this.#handle.getAllKeys<PK>(null, count));
+    return await waitOnRequest(this.handle.getAllKeys<PK>(null, count));
   }
 
   /** Gets the primary key for the first record that matches the query, or `null` if none matches. */
   async getFirstKey() {
-    type PK = MemberType<Row, Key>;
+    type PK = KeyOf<Row, Key>;
 
     if (this.#range != null) {
-      return await waitOnRequest(this.#handle.getKey<PK>(this.#range));
+      return await waitOnRequest(this.handle.getKey<PK>(this.#range));
     }
 
     if (this.#index != null) {
       const [name, range] = this.#index;
-      return await waitOnRequest(this.#handle.index(String(name)).getKey<PK>(range));
+      return await waitOnRequest(this.handle.index(String(name)).getKey<PK>(range));
     }
 
     throw new SyntaxError('Missing where clause');
@@ -225,7 +238,7 @@ export class SelectQueryBuilder<Row extends object, Key, Indices extends object,
    * Gets the primary key for the first record that matches the query, or throws if none matches.
    * @param error - Optional error constructor or factory.
    */
-  async getFirstKeyOrThrow(error?: typeof Error | (() => Error)) {
+  async getFirstKeyOrThrow(error?: ErrorSource) {
     const key = await this.getFirstKey();
     if (key != null) {
       return key;
@@ -239,7 +252,7 @@ export class SelectQueryBuilder<Row extends object, Key, Indices extends object,
       throw new error('No record found');
     }
 
-    throw error();
+    throw error('No record found');
   }
 
   /**
@@ -279,7 +292,7 @@ export class SelectQueryBuilder<Row extends object, Key, Indices extends object,
       throw new SyntaxError('where clause cannot be redefined');
     }
 
-    const store = this.#handle;
+    const store = this.handle;
     let index: [Index, IDBKeyRange];
     switch (op) {
       case '=':
@@ -344,7 +357,7 @@ export class SelectQueryBuilder<Row extends object, Key, Indices extends object,
       throw new SyntaxError('where clause cannot be redefined');
     }
 
-    const store = this.#handle;
+    const store = this.handle;
     let range: IDBKeyRange;
     switch (op) {
       case '=':
@@ -390,24 +403,16 @@ export class SelectQueryBuilder<Row extends object, Key, Indices extends object,
  *
  * @todo Add support for whereKey and where with partial data using {@link IDBCursor.update}.
  */
-export class UpdateQueryBuilder<Row extends object, Key> {
-  /** IndexedDB {@link IDBObjectStore} handle. */
-  readonly #handle;
-
-  /** @internal */
-  constructor(store: IDBObjectStore) {
-    this.#handle = store;
-  }
-
+export class UpdateQueryBuilder<Row extends object, Key> extends ObjectStore {
   /** Adds a record to the store. */
   async add(...[record, key]: UpdateArgsFor<Row, Key>) {
-    const result = await waitOnRequest(this.#handle.add(record, key));
+    const result = await waitOnRequest(this.handle.add(record, key));
     return result as KeyOf<Row, Key>;
   }
 
   /** Adds or updates a record to or in the store. */
   async put(...[record, key]: UpdateArgsFor<Row, Key>) {
-    const result = await waitOnRequest(this.#handle.put(record, key));
+    const result = await waitOnRequest(this.handle.put(record, key));
     return result as KeyOf<Row, Key>;
   }
 }
@@ -417,18 +422,10 @@ export class UpdateQueryBuilder<Row extends object, Key> {
  *
  * @todo Add support for where, using {@link IDBCursor.delete} from an index.
  */
-export class DeleteQueryBuilder<Row extends object, Key> {
-  /** IndexedDB {@link IDBObjectStore} handle. */
-  readonly #handle;
-
-  /** @internal */
-  constructor(store: IDBObjectStore) {
-    this.#handle = store;
-  }
-
+export class DeleteQueryBuilder<Row extends object, Key> extends ObjectStore {
   /** Deletes everything within the store. */
   async everything() {
-    await waitOnRequest(this.#handle.clear());
+    await waitOnRequest(this.handle.clear());
   }
 
   /**
@@ -450,44 +447,51 @@ export class DeleteQueryBuilder<Row extends object, Key> {
   /** The {@link whereKey} implementation. */
   async whereKey(op: Operators, first: KeyOf<Row, Key>, last?: KeyOf<Row, Key>) {
     let range;
-
     switch (op) {
       case '=':
         range = IDBKeyRange.only(first);
-        break;
+        await waitOnRequest(this.handle.delete(range));
+        return;
       case '<':
         range = IDBKeyRange.upperBound(first, true);
-        break;
+        await waitOnRequest(this.handle.delete(range));
+        return;
       case '<=':
         range = IDBKeyRange.upperBound(first);
-        break;
+        await waitOnRequest(this.handle.delete(range));
+        return;
       case '>=':
         range = IDBKeyRange.lowerBound(first);
-        break;
+        await waitOnRequest(this.handle.delete(range));
+        return;
       case '>':
         range = IDBKeyRange.lowerBound(first, true);
-        break;
+        await waitOnRequest(this.handle.delete(range));
+        return;
+    }
+
+    if (last == null) throw new SyntaxError('Missing upper bounds');
+
+    switch (op) {
       case '[]':
-        if (last == null) throw new SyntaxError('Missing upper bounds');
         range = IDBKeyRange.bound(first, last, false, false);
-        break;
+        await waitOnRequest(this.handle.delete(range));
+        return;
       case '(]':
-        if (last == null) throw new SyntaxError('Missing upper bounds');
         range = IDBKeyRange.bound(first, last, true, false);
-        break;
+        await waitOnRequest(this.handle.delete(range));
+        return;
       case '()':
-        if (last == null) throw new SyntaxError('Missing upper bounds');
         range = IDBKeyRange.bound(first, last, true, true);
-        break;
+        await waitOnRequest(this.handle.delete(range));
+        return;
       case '[)':
-        if (last == null) throw new SyntaxError('Missing upper bounds');
         range = IDBKeyRange.bound(first, last, false, true);
-        break;
+        await waitOnRequest(this.handle.delete(range));
+        return;
       default:
         throw new SyntaxError(`Unknown operator ${String(op)}`);
     }
-
-    await waitOnRequest(this.#handle.delete(range));
   }
 }
 

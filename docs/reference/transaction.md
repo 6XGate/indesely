@@ -9,7 +9,9 @@ outline: deep
 - **Summary**
 
   ```ts
-  trx.selectFrom<Store extends keyof Schema>(store: Store): SelectQueryBuilder;
+  class Transaction {
+    selectFrom<Store extends keyof Schema>(store: Store): SelectQueryBuilder;
+  }
   ```
 
   Provides a query builder for selection queries.
@@ -31,7 +33,9 @@ outline: deep
 - **Summary**
 
   ```ts
-  trx.update<Store extends keyof Schema>(store: Store): UpdateQueryBuilder;
+  class Transaction {
+    update<Store extends keyof Schema>(store: Store): UpdateQueryBuilder;
+  }
   ```
 
   Provides a query builder for update queries.
@@ -59,7 +63,9 @@ outline: deep
 - **Summary**
 
   ```ts
-  trx.deleteFrom<Store extends keyof Schema>(store: Store): DeleteQueryBuilder
+  class Transaction {
+    deleteFrom<Store extends keyof Schema>(store: Store): DeleteQueryBuilder;
+  }
   ```
 
   Provides a query builder for deletion queries.

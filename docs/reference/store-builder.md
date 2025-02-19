@@ -6,12 +6,38 @@ outline: deep
 
 The store builder is used to modify a new or existing object store.
 
+## indices
+
+- **Summary**
+
+  ```ts
+  class StoreBuilder {
+    indices: string[];
+  }
+  ```
+
+  Gets the names of the indices of the store.
+
+## name
+
+- **Summary**
+
+  ```ts
+  class StoreBuilder {
+    name: string;
+  }
+  ```
+
+  Gets the name of the store.
+
 ## createIndex()
 
 - **Summary**
 
   ```ts
-  store.createIndex(name: string, keyPath: string | string[], options?: IDBIndexParameters): StoreBuilder
+  class StoreBuilder {
+    createIndex(name: string, keyPath: string | string[], options?: IDBIndexParameters): StoreBuilder;
+  }
   ```
 
 - **Parameters**
@@ -24,7 +50,9 @@ The store builder is used to modify a new or existing object store.
 - **Summary**
 
   ```ts
-  store.dropIndex(name: string): StoreBuilder
+  class StoreBuilder {
+    dropIndex(name: string): StoreBuilder;
+  }
   ```
 
 - **Parameters**

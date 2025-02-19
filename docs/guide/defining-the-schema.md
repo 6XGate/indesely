@@ -18,27 +18,37 @@ interface Employee {
 
 ## Store Schema
 
+### Basic Store
+
 ```ts
 // Store with a model
 type Employees = Store<Employee>;
 ```
 
+### Defining a Key
+
 ```ts
 // Store with a model and path to a store key in the model.
 type Employees = Store<Employee, 'id'>;
 ```
+
+### Defining Indices
 
 ```ts
 // Store with a model, a key, and indices with paths to indexed value.
 type Employees = Store<Employee, 'id', { department: 'departmentId' }>;
 ```
 
-## Model Keys
+## Store Keys
+
+### From a Model Field
 
 ```ts
 // Store with a model and path to a store key in the model.
 type Employees = Store<Employee, 'id'>;
 ```
+
+### Manually Defined
 
 ```ts
 interface Employee {
@@ -50,6 +60,13 @@ interface Employee {
 // Store with a model and manual key.
 type Employees = Store<Employee>;
 ```
+
+```ts
+// Also, a store with a model and manual key.
+type Employees = Store<Employee, ManualKey>;
+```
+
+### Auto Incrementing
 
 ```ts
 interface Employee {
@@ -64,6 +81,8 @@ interface Employee {
 type Employees = Store<Employee, AutoIncrement>;
 ```
 
+### From a Model Path
+
 ```ts
 // The key can reference values deep in the object, for example:
 type Employees = Store<Employee, 'ids.number'>;
@@ -73,15 +92,14 @@ type Employees = Store<Employee, 'ids.dln'>;
 
 ## Store Indices
 
-```ts
-// Store with a model and key, but no indices.
-type Employees = Store<Employee, 'id'>;
-```
+### From a Model Field
 
 ```ts
 // Store with a model, a key, and indices with paths to indexed value.
 type Employees = Store<Employee, 'id', { department: 'departmentId' }>;
 ```
+
+### From a Model Path
 
 ```ts
 // Indices can reference values deep in the object, for example:
@@ -111,8 +129,8 @@ const useEmploymentDatabase = defineDatabase<Employment>({
 
 ## What's Next?
 
-> TODO: About migrations
+- Learn about upgrading the object stores and indices between database version by read about [Migrations](migrations).
 
-> TODO: About
+- Learn how to getting and retrieving records by read about [Reading and Writing Data](reading-and-writing-data)
 
-> TODO: About managing database.
+- Learn how to list and delete database by reading [Managing Database](managing-databases).

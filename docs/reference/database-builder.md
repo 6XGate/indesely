@@ -9,9 +9,11 @@ outline: deep
 - **Summary**
 
   ```ts
-  trx.createStore(name: string): StoreBuilder;
-  trx.createStore(name: string, autoIncrement: AutoIncrement): StoreBuilder;
-  trx.createStore(name: string, keyPath: string | string[]): StoreBuilder;
+  class DatabaseBuilder {
+    createStore(name: string): StoreBuilder;
+    createStore(name: string, autoIncrement: AutoIncrement): StoreBuilder;
+    createStore(name: string, keyPath: string | string[]): StoreBuilder;
+  }
   ```
 
   Creates a new object store with the specified name and options. If `autoIncrement` or `keyPath`, the store will have a manually specified key.
@@ -31,7 +33,9 @@ outline: deep
 - **Summary**
 
   ```ts
-  trx.alterStore(name: string): StoreBuilder
+  class DatabaseBuilder {
+    alterStore(name: string): StoreBuilder;
+  }
   ```
 
   Gets a [StoreBuilder](store-builder) to modify an existing object store.
@@ -49,7 +53,9 @@ outline: deep
 - **Summary**
 
   ```ts
-  trx.dropStore(name: string): void;
+  class DatabaseBuilder {
+    dropStore(name: string): void;
+  }
   ```
 
   Deletes an existing object store.

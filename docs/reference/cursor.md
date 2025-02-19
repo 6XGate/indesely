@@ -25,7 +25,9 @@ outline: deep
 - **Summary**
 
   ```ts
-  key: Key;
+  class Cursor {
+    readonly key: Key;
+  }
   ```
 
   Gets the index key, or primary key if not using an index, of the record pointed to by the cursor.
@@ -35,7 +37,9 @@ outline: deep
 - **Summary**
 
   ```ts
-  primaryKey: PrimaryKey;
+  class Cursor {
+    readonly primaryKey: PrimaryKey;
+  }
   ```
 
   Gets the primary key of the record pointed to by the cursor.
@@ -45,7 +49,9 @@ outline: deep
 - **Summary**
 
   ```ts
-  value: Row;
+  class Cursor {
+    readonly value: Row;
+  }
   ```
 
   Gets the record pointed to by the cursor.
@@ -61,7 +67,9 @@ outline: deep
 - **Summary**
 
   ```ts
-  cursor.advance(count: number): void;
+  class Cursor {
+    advance(count: number): void;
+  }
   ```
 
   Advances the cursor a specified number of iteration on the next iteration.
@@ -81,7 +89,9 @@ outline: deep
 - **Summary**
 
   ```ts
-  cursor.continue(key: Key, primaryKey?: PrimaryKey): void;
+  class Cursor {
+    continue(key: Key, primaryKey?: PrimaryKey): void;
+  }
   ```
 
   Advances the cursor to the next record with the specified key, and optionally primary key. If the cursor is not using an index, then `key` and `primaryKey` are synonymous.
@@ -102,7 +112,9 @@ outline: deep
 - **Summary**
 
   ```ts
-  cursor.delete(): Promise<void>
+  class Cursor {
+    delete(): Promise<void>;
+  }
   ```
 
   Deletes the record currently pointed to by the cursor.
@@ -118,7 +130,9 @@ outline: deep
 - **Summary**
 
   ```ts
-  cursor.update(record: Row): Promise<Key>
+  class Cursor {
+    update(record: Row): Promise<Key>;
+  }
   ```
 
   Updates the record currently pointed to by the cursor.

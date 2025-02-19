@@ -25,6 +25,10 @@ export default tseslint.config(
   },
   {
     plugins: { tsdoc },
+    linterOptions: {
+      reportUnusedDisableDirectives: 'error',
+      reportUnusedInlineConfigs: 'error',
+    },
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
@@ -40,7 +44,18 @@ export default tseslint.config(
     // {
     rules: {
       // JavaScript
+      // ==
+
+      // Always require brackets if a statement is multiline.
       'curly': ['error', 'multi-line'],
+      // Empty cases with fallthrough are a common, and not misleading pattern.
+      'no-fallthrough': [
+        'error',
+        {
+          allowEmptyCase: true,
+          reportUnusedFallthroughComment: true,
+        },
+      ],
 
       // JSDoc
       // ==
@@ -90,8 +105,12 @@ export default tseslint.config(
       '@typescript-eslint/no-import-type-side-effects': 'error',
       // Still flags necessary type parameters as unnecessary.
       '@typescript-eslint/no-unnecessary-type-parameters': 'off',
+      // To allow full stack traces through asynchronous functions, this is the recommended way.
+      '@typescript-eslint/promise-function-async': 'error',
       // Allow some very common template expressions.
       '@typescript-eslint/restrict-template-expressions': ['error', { allowNumber: true }],
+      // To allow full stack traces through asynchronous functions, this is the recommended way.
+      '@typescript-eslint/return-await': ['error', 'always'],
       // Sometimes, better documentation takes priority.
       '@typescript-eslint/unified-signatures': 'off',
     },

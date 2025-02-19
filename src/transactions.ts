@@ -1,12 +1,13 @@
 import { DeleteQueryBuilder, SelectQueryBuilder, UpdateQueryBuilder } from './builders.js';
 import { withResolvers } from './compat.js';
-import type { StoreIndices, StoreKey, StoreRow } from './utilities.js';
+import { ObjectStore } from './schema.js';
+import type { StoreIndices, StoreKey, StoreRow } from './schema.js';
 import type { Promisable } from 'type-fest';
 
 /** An IndexedDB transaction. */
 export class Transaction {
   /**
-   * The transaction handle.
+   * The native {@link IDBTransaction} handle.
    * @internal
    */
   protected readonly handle;
@@ -14,6 +15,14 @@ export class Transaction {
   /** @internal */
   constructor(transaction: IDBTransaction) {
     this.handle = transaction;
+  }
+
+  /**
+   * Gets an information about an object store.
+   * @param name - The name of the object store.
+   */
+  getObjectStore(name: string) {
+    return new ObjectStore(this.handle.objectStore(name));
   }
 
   /**
@@ -29,7 +38,7 @@ export class Transaction {
 
       trx.oncomplete = () => resolve(result);
       trx.onerror = () => reject(trx.error ?? new Error('Unknown transaction error'));
-      trx.commit();
+      trx.onabort = () => reject(trx.error ?? new Error('Transaction aborted'));
 
       return await promise;
     } catch (error) {

@@ -4,12 +4,20 @@ outline: deep
 
 # Database API: Database
 
+- **Summary**
+
+  ```ts
+  interface Database<Schema>;
+  ```
+
+  The interface for a database connection contains the necessary methods to get information about a database as well as start transactions on it. You get an instance of a database by using the `useDatabase` factory mentioned below that is return from [`defineDatabase`](management#definedatabase).
+
 ## useDatabase()
 
 - **Summary**
 
   ```ts
-  type DatabaseFactory = () => Database;
+  type DatabaseFactory = () => Database<Schema>;
   const useDatabase: DatabaseFactory;
   ```
 
@@ -24,7 +32,9 @@ outline: deep
 - **Summary**
 
   ```ts
-  db.getName(): Promise<string>;
+  interface Database {
+    getName(): Promise<string>;
+  }
   ```
 
   Gets the database name.
@@ -34,7 +44,9 @@ outline: deep
 - **Summary**
 
   ```ts
-  db.getVersion(): Promise<number>;
+  interface Database {
+    getVersion(): Promise<number>;
+  }
   ```
 
   Gets the database version. With Indesely, the version is used as a means to track which migrations have been run on the database.
@@ -44,7 +56,9 @@ outline: deep
 - **Summary**
 
   ```ts
-  db.getStores(): Promise<string[]>;
+  interface Database {
+    getStores(): Promise<string[]>;
+  }
   ```
 
   Gets the name of all the object stores.
@@ -54,7 +68,9 @@ outline: deep
 - **Summary**
 
   ```ts
-  db.read<Stores, Result>(stores: Stores[], scope: (trx: Transaction) => Promise<Result>): Promise<Result>;
+  interface Database {
+    read<Stores, Result>(stores: Stores[], scope: (trx: Transaction) => Promise<Result>): Promise<Result>;
+  }
   ```
 
   Starts a read-only transaction.
@@ -79,7 +95,9 @@ outline: deep
 - **Summary**
 
   ```ts
-  db.change<Stores, Result>(stores: Stores[], scope: (trx: Transaction) => Promise<Result>): Promise<Result>;
+  interface Database {
+    change<Stores, Result>(stores: Stores[], scope: (trx: Transaction) => Promise<Result>): Promise<Result>;
+  }
   ```
 
   Starts a read-write transaction.
@@ -98,3 +116,17 @@ outline: deep
 - **Returns**
 
   The result of the callback function.
+
+## close()
+
+- **Summary**
+
+  ```ts
+  interface Database {
+    close: void;
+  }
+  ```
+
+  Closes the database.
+
+  This will close the native handle on the current connection and reset it. The connection will be reestablished if any other method is called.

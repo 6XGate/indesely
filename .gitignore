@@ -45,6 +45,9 @@ node_modules/
 # Build output
 dist/
 
+# Vitest temporary files
+tsconfig.test.vitest-temp.json
+
 # VitePress outputs
 docs/.vitepress/dist/
 docs/.vitepress/cache/

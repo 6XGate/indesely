@@ -6,12 +6,14 @@ outline: deep
 
 ## Starting Transactions
 
-## Writing and Updating Objects
+## Inserting and Updating Records
 
-## Reading Object and Keys
+## Reading Records and Keys
 
 ## Querying on Keys and Indices
 
-## Deleting Objects
+## Deleting Records
 
 ## What's Next?
+
+- Learn how to list and delete database by reading [Managing Database](managing-databases).

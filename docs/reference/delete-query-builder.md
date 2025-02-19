@@ -10,7 +10,7 @@ outline: deep
   class DeleteQueryBuilder<Row, Key>
   ```
 
-  Deletion query builder.
+  Deletion query
 
 - **Type Parameters**
 
@@ -22,7 +22,9 @@ outline: deep
 - **Summary**
 
   ```ts
-  builder.everything(): Promise<void>
+  class DeleteQueryBuilder {
+    everything(): Promise<void>;
+  }
   ```
 
   Deletes everything in the store.
@@ -32,8 +34,10 @@ outline: deep
 - **Summary**
 
   ```ts
-  builder.whereKey(op: Compares, key: PrimaryKey): Promise<void>;
-  builder.whereKey(op: Bounds, lower: PrimaryKey, upper: PrimaryKey): Promise<void>;
+  class DeleteQueryBuilder {
+    whereKey(op: Compares, key: PrimaryKey): Promise<void>;
+    whereKey(op: Bounds, lower: PrimaryKey, upper: PrimaryKey): Promise<void>;
+  }
   ```
 
   Deletes only records that match those compared with the given key or bounds.

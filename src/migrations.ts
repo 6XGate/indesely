@@ -1,19 +1,11 @@
+import { AutoIncrement, ObjectStore } from './schema.js';
 import { ReadWriteTransaction } from './transactions.js';
-import { AutoIncrement } from './utilities.js';
 import type { Store } from './database.js';
-import type { UpgradingKey } from './utilities.js';
+import type { UpgradingKey } from './schema.js';
 import type { Promisable } from 'type-fest';
 
 /** Store builder. */
-export class StoreBuilder {
-  /** The object store handle. */
-  readonly #handle;
-
-  /** @internal */
-  constructor(store: IDBObjectStore) {
-    this.#handle = store;
-  }
-
+export class StoreBuilder extends ObjectStore {
   /**
    * Adds an index to the object store.
    * @param name - The name of the index.
@@ -22,7 +14,7 @@ export class StoreBuilder {
    * @returns This {@link StoreBuilder} instance.
    */
   createIndex(name: string, keyPath: string | string[], options?: IDBIndexParameters) {
-    this.#handle.createIndex(name, keyPath, options);
+    this.handle.createIndex(name, keyPath, options);
     return this;
   }
 
@@ -32,7 +24,7 @@ export class StoreBuilder {
    * @returns This {@link StoreBuilder} instance.
    */
   dropIndex(name: string) {
-    this.#handle.deleteIndex(name);
+    this.handle.deleteIndex(name);
     return this;
   }
 }

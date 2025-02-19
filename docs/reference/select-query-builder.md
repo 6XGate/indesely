@@ -10,7 +10,7 @@ outline: deep
   class SelectQueryBuilder<Row, Key, Indices, CursorKey = Key>
   ```
 
-  Selection query builder.
+  Selection query
 
 - **Type Parameters**
 
@@ -24,7 +24,9 @@ outline: deep
 - **Summary**
 
   ```ts
-  builder.count(): Promise<number>
+  class SelectQueryBuilder {
+    count(): Promise<number>;
+  }
   ```
 
   Gets the number of records that matches the query.
@@ -34,7 +36,9 @@ outline: deep
 - **Summary**
 
   ```ts
-  builder.cursor(direction?: IDBCursorDirection): AsyncGenerator<Cursor<Row, CursorKey, PrimaryKey>>
+  class SelectQueryBuilder {
+    cursor(direction?: IDBCursorDirection): AsyncGenerator<Cursor<Row, CursorKey, PrimaryKey>>;
+  }
   ```
 
   Gets an iterator for a cursor to read and update records in the store that matches the query.
@@ -53,7 +57,9 @@ outline: deep
 - **Summary**
 
   ```ts
-  builder.keyCursor(direction?: IDBCursorDirection): AsyncGenerator<Cursor<Row, CursorKey, PrimaryKey>>
+  class SelectQueryBuilder {
+    keyCursor(direction?: IDBCursorDirection): AsyncGenerator<Cursor<Row, CursorKey, PrimaryKey>>;
+  }
   ```
 
   Gets an iterator for a cursor to read keys and update the records they reference in the store that matches the query.
@@ -72,7 +78,9 @@ outline: deep
 - **Summary**
 
   ```ts
-  builder[Symbol.asyncIterator](): AsyncGenerator<Row, void, number | undefined>
+  class SelectQueryBuilder {
+    [Symbol.asyncIterator](): AsyncGenerator<Row, void, number | undefined>;
+  }
   ```
 
   Gets an iterator to read records in the store that match the query. Pass a number to the `iterator.next` call will advance the cursor that number of iterations.
@@ -82,7 +90,9 @@ outline: deep
 - **Summary**
 
   ```ts
-  builder.stream(direction?: IDBCursorDirection): AsyncGenerator<Row, void, number | undefined>
+  class SelectQueryBuilder {
+    stream(direction?: IDBCursorDirection): AsyncGenerator<Row, void, number | undefined>;
+  }
   ```
 
   Gets an iterator to read records in the store that match the query. Pass a number to the `iterator.next` call will advance the cursor that number of iterations.
@@ -96,7 +106,9 @@ outline: deep
 - **Summary**
 
   ```ts
-  builder.streamKeys(direction?: IDBCursorDirection): AsyncGenerator<CursorKey, void, number | undefined>
+  class SelectQueryBuilder {
+    streamKeys(direction?: IDBCursorDirection): AsyncGenerator<CursorKey, void, number | undefined>;
+  }
   ```
 
   Gets an iterator to read key in the index that match the query. Pass a number to the `iterator.next` call will advance the cursor that number of iterations.
@@ -114,7 +126,9 @@ outline: deep
 - **Summary**
 
   ```ts
-  builder.streamPrimaryKeys(direction?: IDBCursorDirection): AsyncGenerator<PrimaryKey, void, number | undefined>
+  class SelectQueryBuilder {
+    streamPrimaryKeys(direction?: IDBCursorDirection): AsyncGenerator<PrimaryKey, void, number | undefined>;
+  }
   ```
 
   Gets an iterator to read the primary keys in the store that match the query. Pass a number to the `iterator.next` call will advance the cursor that number of iterations.
@@ -132,7 +146,9 @@ outline: deep
 - **Summary**
 
   ```ts
-  builder.getAll(count?: number): Promise<Row[]>
+  class SelectQueryBuilder {
+    getAll(count?: number): Promise<Row[]>;
+  }
   ```
 
   Gets all, or the specified number, of records that match the query.
@@ -150,7 +166,9 @@ outline: deep
 - **Summary**
 
   ```ts
-  builder.getFirst(): Promise<Row | null>
+  class SelectQueryBuilder {
+    getFirst(): Promise<Row | null>;
+  }
   ```
 
   Gets the first record to match the query, if present. A [`where`](#where) or [`whereKey`](#wherekey) call must be made to use this operation.
@@ -164,7 +182,9 @@ outline: deep
 - **Summary**
 
   ```ts
-  builder.getFirstOrThrow(error?: ErrorFactory): Promise<Row>
+  class SelectQueryBuilder {
+    getFirstOrThrow(error?: ErrorFactory): Promise<Row>;
+  }
   ```
 
   Gets the first record to match the query, or throw an error if none exists. A [`where`](#where) or [`whereKey`](#wherekey) call must be made to use this operation.
@@ -183,7 +203,9 @@ outline: deep
 - **Summary**
 
   ```ts
-  builder.getAllKeys(count?: number): Promise<PrimaryKey[]>
+  class SelectQueryBuilder {
+    getAllKeys(count?: number): Promise<PrimaryKey[]>;
+  }
   ```
 
   Gets all, or the specified number, of primary keys that match the query.
@@ -201,7 +223,9 @@ outline: deep
 - **Summary**
 
   ```ts
-  builder.getFirstKey(): Promise<PrimaryKey | undefined>
+  class SelectQueryBuilder {
+    getFirstKey(): Promise<PrimaryKey | undefined>;
+  }
   ```
 
   Gets the first primary key that matches the query, if present. A [`where`](#where) or [`whereKey`](#wherekey) call must be made to use this operation.
@@ -215,7 +239,9 @@ outline: deep
 - **Summary**
 
   ```ts
-  builder.getFirstKeyOrThrow(error?: ErrorFactory): Promise<PrimaryKey | undefined>
+  class SelectQueryBuilder {
+    getFirstKeyOrThrow(error?: ErrorFactory): Promise<PrimaryKey | undefined>;
+  }
   ```
 
   Gets the first primary key that matches the query, or throw an error if none exists. A [`where`](#where) or [`whereKey`](#wherekey) call must be made to use this operation.
@@ -234,11 +260,13 @@ outline: deep
 - **Summary**
 
   ```ts
-  builder.where<Index>(index: Index, op: Compares, key: IndexKey): SelectQueryBuilder<Row, Key, Indices, Indices[Index]>,
-  builder.where<Index>(index: Index, op: Bounds, lower: IndexKey, upper: IndexKey): SelectQueryBuilder<Row, Key, Indices, Indices[Index]>,
+  class SelectQueryBuilder {
+    where<Index>(index: Index, op: Compares, key: IndexKey): SelectQueryBuilder<Row, Key, Indices, Indices[Index]>;
+    where<Index>(index: Index, op: Bounds, lower: IndexKey, upper: IndexKey): SelectQueryBuilder<Row, Key, Indices, Indices[Index]>;
+  }
   ```
 
-  Adds a where clause, known as a constraint, to the query using the specified index. Only one such constraint may exist at a time on a query builder.
+  Adds a where clause, known as a constraint, to the query using the specified index. Only one such constraint may exist at a time on a query
 
 - **Parameters**
 
@@ -262,11 +290,13 @@ outline: deep
 - **Summary**
 
   ```ts
-  builder.whereKey(op: Compares, key: PrimaryKey): SelectQueryBuilder<Row, Key, Indices>,
-  builder.whereKey(op: Bounds, lower: IndexKey, upper: PrimaryKey): SelectQueryBuilder<Row, Key, Indices>,
+  class SelectQueryBuilder {
+    whereKey(op: Compares, key: PrimaryKey): SelectQueryBuilder<Row, Key, Indices>;
+    whereKey(op: Bounds, lower: IndexKey, upper: PrimaryKey): SelectQueryBuilder<Row, Key, Indices>;
+  }
   ```
 
-  Adds a where clause, known as a constraint, to the query using the primary key. Only one such constraint may exist at a time on a query builder.
+  Adds a where clause, known as a constraint, to the query using the primary key. Only one such constraint may exist at a time on a query
 
 - **Parameters**
 

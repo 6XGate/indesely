@@ -20,6 +20,11 @@ tab_width = 2
 indent_size = 2
 tab_width = 2
 
+# Markdown shouldn't have a maximum line length
+# for code snippets.
+[*.md]
+max_line_length = 200
+
 # Data streams
 [*.{json,yaml,yml}]
 indent_size = 2
