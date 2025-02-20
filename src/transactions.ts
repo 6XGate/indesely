@@ -5,7 +5,7 @@ import type { StoreIndices, StoreKey, StoreRow } from './schema.js';
 import type { Promisable } from 'type-fest';
 
 /** An IndexedDB transaction. */
-export class Transaction {
+export class Transaction<Schema extends Record<string, object>> {
   /**
    * The native {@link IDBTransaction} handle.
    * @internal
@@ -21,8 +21,8 @@ export class Transaction {
    * Gets an information about an object store.
    * @param name - The name of the object store.
    */
-  getObjectStore(name: string) {
-    return new ObjectStore(this.handle.objectStore(name));
+  getObjectStore<Store extends keyof Schema>(name: Store) {
+    return new ObjectStore(this.handle.objectStore(String(name)));
   }
 
   /**
@@ -54,7 +54,7 @@ export class Transaction {
  * Do not mix other asynchronous operations with IndexedDB operations
  * within a transaction, the transaction will timeout.
  */
-export class ReadOnlyTransaction<Schema extends Record<string, object>> extends Transaction {
+export class ReadOnlyTransaction<Schema extends Record<string, object>> extends Transaction<Schema> {
   /**
    * Starts a selection query within the transaction.
    * @param store - The name of the object store.

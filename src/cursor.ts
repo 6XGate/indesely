@@ -18,6 +18,7 @@ export class Cursor<Row, Key, PrimaryKey, Input extends IDBCursor | IDBCursorWit
 
     // Unknown to be good when iterating.
     this.handle = null as unknown as Input;
+    /* v8 ignore next 3 -- Not testable since, not called */
     this.#next = () => {
       /* nothing initially */
     };
@@ -49,8 +50,8 @@ export class Cursor<Row, Key, PrimaryKey, Input extends IDBCursor | IDBCursorWit
   continue(key: Key, primaryKey?: PrimaryKey) {
     this.#next =
       primaryKey != null
-        ? () => this.handle.continue(key as IDBValidKey)
-        : () => this.handle.continuePrimaryKey(key as IDBValidKey, primaryKey as IDBValidKey);
+        ? () => this.handle.continuePrimaryKey(key as IDBValidKey, primaryKey as IDBValidKey)
+        : () => this.handle.continue(key as IDBValidKey);
   }
 
   /** Deletes the current record pointed to by the cursor. */
@@ -78,9 +79,7 @@ export class Cursor<Row, Key, PrimaryKey, Input extends IDBCursor | IDBCursorWit
 
     const request = this.#request;
 
-    request.onerror = () => {
-      reject(request.error ?? new Error('Unknown cursor error'));
-    };
+    request.onerror = () => reject(request.error ?? new Error('Unknown cursor error'));
 
     request.onsuccess = () => {
       if (request.result == null) {

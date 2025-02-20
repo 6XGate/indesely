@@ -1,6 +1,5 @@
 import { describe, expectTypeOf, it } from 'vitest';
-import type { UpdateArgsFor } from '../src/builders';
-import type { AutoIncrement, ManualKey, UpgradingKey } from '../src/schema';
+import type { UpdateArgsFor, AutoIncrement, ManualKey, UpgradingKey } from '../src';
 
 interface Model {
   id: string;

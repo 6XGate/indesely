@@ -1,36 +1,32 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
-import { defineDatabase, dropDatabase, listDatabases } from '../src/database';
-import { AutoIncrement } from '../src/schema';
-import { ReadOnlyTransaction, ReadWriteTransaction } from '../src/transactions';
+import {
+  defineDatabase,
+  dropDatabase,
+  listDatabases,
+  AutoIncrement,
+  ReadOnlyTransaction,
+  ReadWriteTransaction,
+} from '../src';
 import { getSuitePath } from './tools/utilities';
-import type { Store } from '../src/database';
+import type { DatabaseFactory, Store } from '../src';
 
-test('Management', async (context) => {
-  const suiteName = getSuitePath(context);
+let suiteName: string;
+beforeEach((context) => {
+  suiteName = getSuitePath(context);
+});
 
+test('Management', async () => {
   const useOneDb = defineDatabase({
     name: `${suiteName}/test0001`,
-    migrations: [
-      (trx) => {
-        trx.createStore('rows');
-      },
-    ],
+    migrations: [(trx) => trx.createStore('rows')],
   });
   const useTwoDb = defineDatabase({
     name: `${suiteName}/test0002`,
-    migrations: [
-      (trx) => {
-        trx.createStore('rows');
-      },
-    ],
+    migrations: [(trx) => trx.createStore('rows')],
   });
   const useThreeDb = defineDatabase({
     name: `${suiteName}/test0003`,
-    migrations: [
-      (trx) => {
-        trx.createStore('rows');
-      },
-    ],
+    migrations: [(trx) => trx.createStore('rows')],
   });
 
   await useOneDb().change(['rows'], async () => await Promise.resolve());
@@ -60,16 +56,12 @@ describe('Database', () => {
   };
 
   let suiteName: string;
-  let useDatabase: ReturnType<typeof defineDatabase<TestSchema>>;
+  let useDatabase: DatabaseFactory<TestSchema>;
   beforeEach((context) => {
     suiteName = getSuitePath(context);
     useDatabase = defineDatabase<TestSchema>({
       name: suiteName,
-      migrations: [
-        (trx) => {
-          trx.createStore('rows', AutoIncrement);
-        },
-      ],
+      migrations: [(trx) => trx.createStore('rows', AutoIncrement)],
     });
   });
 
@@ -114,5 +106,24 @@ describe('Database', () => {
     const spy = vi.fn(async () => await Promise.resolve(1));
     await expect(database.change(['rows'], spy)).resolves.toBe(1);
     expect(spy).toHaveBeenCalledExactlyOnceWith(expect.any(ReadWriteTransaction));
+  });
+});
+
+describe('Persistence', () => {
+  test("Shouldn't cause an error", async () => {
+    vi.stubGlobal('navigator', {
+      storage: {
+        persisted: async () => await Promise.resolve(false),
+        persist: async () => await Promise.resolve(false),
+      },
+    });
+
+    const useDatabase = defineDatabase({
+      name: suiteName,
+      persist: true,
+      migrations: [(trx) => trx.createStore('rows', AutoIncrement)],
+    });
+
+    await expect(useDatabase().getName()).resolves.toBe(suiteName);
   });
 });

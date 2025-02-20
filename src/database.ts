@@ -25,7 +25,7 @@ export class MigrationError extends Error {
  *
  * @todo Add event handling support for the versionchange event.
  */
-class Database<Schema extends Record<string, object>> {
+class Connection<Schema extends Record<string, object>> {
   /** The database handle. */
   readonly #handle;
 
@@ -125,10 +125,10 @@ export function defineDatabase<Schema extends Record<string, object>>(options: D
   const { name, migrations, persist = false } = options;
 
   /** The real database connection, but use {@link readyDatabase} instead. */
-  let databaseConnection: Database<Schema> | null = null;
+  let connection: Connection<Schema> | null = null;
   async function readyDatabase() {
-    if (databaseConnection != null) return databaseConnection;
-    const { promise, resolve, reject } = withResolvers<Database<Schema>>();
+    if (connection != null) return connection;
+    const { promise, resolve, reject } = withResolvers<Connection<Schema>>();
 
     // HACK: To skip the persisted check when not request, just set it to `true`.
     const persisted = persist ? await requestDatabasePersistence() : true;
@@ -140,10 +140,11 @@ export function defineDatabase<Schema extends Record<string, object>>(options: D
     const request = globalThis.indexedDB.open(name, version);
 
     request.onsuccess = () => {
-      databaseConnection = new Database<Schema>(request.result);
-      resolve(databaseConnection);
+      connection = new Connection<Schema>(request.result);
+      resolve(connection);
     };
 
+    /* v8 ignore next 4 -- Hard to reliability test */
     request.onblocked = () => {
       reject(new Error(`Database "${name}" is being upgraded by another tab or window`));
       request.result.close();
@@ -151,6 +152,7 @@ export function defineDatabase<Schema extends Record<string, object>>(options: D
 
     let migrationError: MigrationError | null = null;
     request.onupgradeneeded = async function migrateDatabase(ev) {
+      /* v8 ignore next 1 -- Hard to forcibly test */
       if (request.transaction == null) throw new Error('No transaction');
       const migrator = new DatabaseBuilder(request.transaction);
       let name: string | undefined;
@@ -169,6 +171,7 @@ export function defineDatabase<Schema extends Record<string, object>>(options: D
     };
 
     request.onerror = () => {
+      /* v8 ignore next 2 -- Hard to forcibly test */
       if (request.error == null) {
         reject(new Error('Unknown connect failure'));
       } else if (request.error.name === 'AbortError' && migrationError != null) {
@@ -230,11 +233,11 @@ export function defineDatabase<Schema extends Record<string, object>>(options: D
    * reopened if any other method is called.
    */
   function close() {
-    databaseConnection?.close();
-    databaseConnection = null;
+    connection?.close();
+    connection = null;
   }
 
-  const connection = {
+  const database = {
     getName,
     getVersion,
     getStores,
@@ -243,8 +246,14 @@ export function defineDatabase<Schema extends Record<string, object>>(options: D
     close,
   };
 
-  return () => connection;
+  return () => database;
 }
+
+/** A database factory. */
+export type DatabaseFactory<Schema extends Record<string, object>> = ReturnType<typeof defineDatabase<Schema>>;
+
+/** A database connection. */
+export type Database<Schema extends Record<string, object>> = ReturnType<DatabaseFactory<Schema>>;
 
 /**
  * Attempts to delete a database.
@@ -256,6 +265,7 @@ export async function dropDatabase(name: string) {
 
   const request = globalThis.indexedDB.deleteDatabase(name);
   request.onsuccess = () => resolve();
+  /* v8 ignore next 2 -- Hard to forcibly test */
   request.onerror = () => reject(request.error ?? new Error('Unknown request failure'));
   request.onblocked = () => reject(new Error(`Database "${name}" is being upgraded by another tab or window`));
 

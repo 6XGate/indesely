@@ -1,13 +1,14 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
-import { defineDatabase } from '../src/database';
-import { DatabaseBuilder, StoreBuilder } from '../src/migrations';
-import { AutoIncrement, ManualKey } from '../src/schema';
+import { defineDatabase, AutoIncrement, ManualKey, DatabaseBuilder, StoreBuilder } from '../src';
 import { getSuitePath } from './tools/utilities';
 
-describe('Upgrading', () => {
-  test('Full', async (context) => {
-    const suiteName = getSuitePath(context);
+let suiteName: string;
+beforeEach((context) => {
+  suiteName = getSuitePath(context);
+});
 
+describe('Upgrading', () => {
+  test('Full', async () => {
     const version1 = vi.fn(() => undefined).mockName('version1');
     const version2 = vi.fn(() => undefined).mockName('version2');
     const version3 = vi.fn(() => undefined).mockName('version3');
@@ -35,9 +36,7 @@ describe('Upgrading', () => {
     expect(version3).not.toHaveBeenCalled();
   });
 
-  test('Partial', async (context) => {
-    const suiteName = getSuitePath(context);
-
+  test('Partial', async () => {
     const version1 = vi.fn(() => undefined).mockName('version1');
     const version2 = vi.fn(() => undefined).mockName('version2');
     const version3 = vi.fn(() => undefined).mockName('version3');
@@ -116,28 +115,67 @@ describe('Upgrading', () => {
 });
 
 describe('Building Database', () => {
-  let suiteName: string;
-  beforeEach((context) => {
-    suiteName = getSuitePath(context);
+  describe('Failing', () => {
+    test('In migration', async () => {
+      const useDatabase = defineDatabase({
+        name: suiteName,
+        migrations: [
+          (trx) => trx.createStore('store2'),
+          () => {
+            throw new ReferenceError('A test');
+          },
+        ],
+      });
+
+      const database = useDatabase();
+      await expect(database.getStores()).rejects.toThrow(
+        expect.objectContaining({
+          name: 'MigrationError',
+          migration: '2',
+          cause: new ReferenceError('A test'),
+        }) as undefined,
+      );
+    });
+
+    test('Before migration', async () => {
+      const useDatabase = defineDatabase({
+        name: suiteName,
+        migrations: true as never,
+      });
+
+      const database = useDatabase();
+      await expect(database.getStores()).rejects.toThrow(
+        expect.objectContaining({
+          name: 'MigrationError',
+          message: expect.stringContaining('Error before starting migrations') as string,
+          cause: expect.objectContaining({
+            name: 'TypeError',
+          }) as undefined,
+        }) as undefined,
+      );
+    });
   });
 
   describe('Stores', () => {
     describe('Creating', () => {
-      test('All new stores', async () => {
+      test('New stores', async () => {
         const useDatabase = defineDatabase({
           name: suiteName,
           migrations: [
             (trx) => {
               const store2 = trx.createStore('store2');
               expect(store2).toBeInstanceOf(StoreBuilder);
+              expect(store2.name).toBe('store2');
               expect(store2.keyPath).toBe(ManualKey);
 
               const store3 = trx.createStore('store3', AutoIncrement);
               expect(store3).toBeInstanceOf(StoreBuilder);
+              expect(store3.name).toBe('store3');
               expect(store3.keyPath).toBe(AutoIncrement);
 
               const store4 = trx.createStore('store4', 'id');
               expect(store4).toBeInstanceOf(StoreBuilder);
+              expect(store4.name).toBe('store4');
               expect(store4.keyPath).toBe('id');
             },
           ],
@@ -150,14 +188,7 @@ describe('Building Database', () => {
       test('Store already exists', async () => {
         const useDatabase = defineDatabase({
           name: suiteName,
-          migrations: [
-            (trx) => {
-              trx.createStore('store2');
-            },
-            (trx) => {
-              trx.createStore('store2');
-            },
-          ],
+          migrations: [(trx) => trx.createStore('store2'), (trx) => trx.createStore('store2')],
         });
 
         const database = useDatabase();
@@ -198,14 +229,7 @@ describe('Building Database', () => {
       test('Non-existent store', async () => {
         const useDatabase = defineDatabase({
           name: suiteName,
-          migrations: [
-            (trx) => {
-              trx.createStore('store2');
-            },
-            (trx) => {
-              trx.alterStore('store3');
-            },
-          ],
+          migrations: [(trx) => trx.createStore('store2'), (trx) => trx.alterStore('store3')],
         });
 
         const database = useDatabase();
@@ -243,14 +267,7 @@ describe('Building Database', () => {
       test('Non-existent store', async () => {
         const useDatabase = defineDatabase({
           name: suiteName,
-          migrations: [
-            (trx) => {
-              trx.createStore('store2');
-            },
-            (trx) => {
-              trx.dropStore('store3');
-            },
-          ],
+          migrations: [(trx) => trx.createStore('store2'), (trx) => trx.dropStore('store3')],
         });
 
         const database = useDatabase();

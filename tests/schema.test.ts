@@ -1,6 +1,6 @@
 import { describe, expectTypeOf, it } from 'vitest';
-import type { Store } from '../src/database';
 import type {
+  Store,
   AutoIncrement,
   KeyOf,
   ManualKey,
@@ -10,7 +10,7 @@ import type {
   StoreKey,
   StoreRow,
   UpgradingKey,
-} from '../src/schema';
+} from '../src';
 
 interface Model {
   id: string;

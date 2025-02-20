@@ -95,4 +95,4 @@ export class DatabaseBuilder extends ReadWriteTransaction<UpgradeableSchema> {
  * Migration function.
  * @param transaction - The migration transaction.
  */
-export type Migration = (transaction: DatabaseBuilder) => Promisable<void>;
+export type Migration = (transaction: DatabaseBuilder) => Promisable<unknown>;
