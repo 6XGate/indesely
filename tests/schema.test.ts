@@ -31,8 +31,14 @@ describe('Store information', () => {
   });
 
   it('Specified manual keys', () => {
-    type Test = Store<Model>;
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-arguments -- Testing
+    type Test = Store<Model, ManualKey>;
     expectTypeOf<StoreKey<Test>>().toEqualTypeOf<ManualKey>();
+  });
+
+  it('Specified type of manual keys', () => {
+    type Test = Store<Model, ManualKey<number>>;
+    expectTypeOf<StoreKey<Test>>().toEqualTypeOf<ManualKey<number>>();
   });
 
   it('Auto increment keys', () => {
@@ -91,6 +97,7 @@ describe('Model key', () => {
     expectTypeOf<KeyOf<Model, ['id', 'name.first']>>().toEqualTypeOf<[string, number]>();
     expectTypeOf<KeyOf<Model, AutoIncrement>>().toEqualTypeOf<number>();
     expectTypeOf<KeyOf<Model, ManualKey>>().toEqualTypeOf<IDBValidKey>();
+    expectTypeOf<KeyOf<Model, ManualKey<number>>>().toEqualTypeOf<number>();
     expectTypeOf<KeyOf<Model, UpgradingKey>>().toEqualTypeOf<IDBValidKey>();
     expectTypeOf<KeyOf<Model, string>>().toEqualTypeOf<never>();
     expectTypeOf<KeyOf<Model, [string]>>().toEqualTypeOf<never>();

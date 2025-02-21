@@ -5,10 +5,13 @@ export type UpgradingKey = typeof UpgradingKey;
 /** Symbol to indicate the schema should be flexible enough for migration. */
 export const UpgradingKey = Symbol('UpgradingKey');
 
+/** The base of the manual key. */
+const ManualBase = Symbol('ManualKey');
+
 /** Symbol to indicates a manual key. */
-export type ManualKey = typeof ManualKey;
+export type ManualKey<K extends IDBValidKey = IDBValidKey> = typeof ManualBase & { __key: K };
 /** Symbol to indicates a manual key. */
-export const ManualKey = Symbol('ManualKey');
+export const ManualKey = ManualBase as ManualKey;
 
 /** Symbol to indicate an auto-increment key. */
 export type AutoIncrement = typeof AutoIncrement;
@@ -51,8 +54,8 @@ export type StoreIndices<Store extends object> = Store extends { indices: infer 
 /** Gets the type of the key of a row */
 export type KeyOf<Row extends object, Key> = Key extends AutoIncrement
   ? number
-  : Key extends ManualKey
-    ? IDBValidKey
+  : Key extends ManualKey<infer K>
+    ? K
     : Key extends UpgradingKey
       ? IDBValidKey
       : MemberType<Row, Key>;

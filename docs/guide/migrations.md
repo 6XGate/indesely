@@ -16,18 +16,21 @@ Indesely allows you to define migrations for each version by providing the migra
 
 ```ts
 (trx) => {
+  // Store with manually defined keys.
   trx.createStore('employees');
 };
 ```
 
 ```ts
 (trx) => {
+  // Store with keys automatically determined from the model.
   trx.createStore('employees', 'id');
 };
 ```
 
 ```ts
 (trx) => {
+  // Store with auto incrementing keys.
   trx.createStore('employees', AutoIncrement);
 };
 ```

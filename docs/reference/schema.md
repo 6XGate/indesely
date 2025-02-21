@@ -40,8 +40,28 @@ Key paths are specified as a string of period, `.`, separated values; for exampl
 
 ### Manual Keys
 
-Manually provided keys are not stored in the record. Using them as the primary key may offer more flexibility when dealing with certain kinds of data.
+- **Summary**
+
+  ```ts
+  // Allows any valid IndexedDB key value.
+  type ManualKey = typeof ManualKey;
+  // Allows only the specified type of key.
+  type ManualKey<K> = typeof ManualKey;
+  // Unique symbol to identify a manual key when creating or introspecting the database.
+  const ManualKey: unique symbol;
+  ```
+
+  Manually provided keys are not stored in the record. Using them as the primary key may offer more flexibility when dealing with certain kinds of data. You can also specify the type of the manual key.
 
 ### Auto Incrementing Keys
 
-Auto-incrementing key are stored like manual keys, but are automatically incremented with each new record.
+- **Summary**
+
+  ```ts
+  // Prevents any key being specified, the database
+  type AutoIncrement = typeof AutoIncrement;
+  // Unique symbol to identify a auto increment key when creating or introspecting the database.
+  const AutoIncrement: unique symbol;
+  ```
+
+  Auto-incrementing key are stored like manual keys, but are automatically incremented with each new record.

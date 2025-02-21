@@ -14,6 +14,7 @@ describe('Type information', () => {
     expectTypeOf<UpdateArgsFor<Model, ['id', 'name.first']>>().toEqualTypeOf<[Model]>();
     expectTypeOf<UpdateArgsFor<Model, AutoIncrement>>().toEqualTypeOf<[Model]>();
     expectTypeOf<UpdateArgsFor<Model, ManualKey>>().toEqualTypeOf<[Model, IDBValidKey]>();
+    expectTypeOf<UpdateArgsFor<Model, ManualKey<number>>>().toEqualTypeOf<[Model, number]>();
     expectTypeOf<UpdateArgsFor<Model, UpgradingKey>>().toEqualTypeOf<[a: Model, b?: IDBValidKey]>();
     expectTypeOf<UpdateArgsFor<Model, string>>().toEqualTypeOf<never>();
     expectTypeOf<UpdateArgsFor<Model, [string]>>().toEqualTypeOf<never>();

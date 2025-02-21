@@ -16,8 +16,8 @@ type Where = 'whereKey' | 'where';
 /** Gets the necessary _add_ and _put_ parameters for a row. */
 export type UpdateArgsFor<Row extends object, Key> = Key extends AutoIncrement
   ? [record: Row]
-  : Key extends ManualKey
-    ? [record: Row, key: IDBValidKey]
+  : Key extends ManualKey<infer K>
+    ? [record: Row, key: K]
     : Key extends UpgradingKey
       ? [record: Row, key?: IDBValidKey]
       : Key extends MemberPaths<Row>[]

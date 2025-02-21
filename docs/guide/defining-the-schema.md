@@ -66,6 +66,11 @@ type Employees = Store<Employee>;
 type Employees = Store<Employee, ManualKey>;
 ```
 
+```ts
+// Also, a store with a model and manual key of a specific type.
+type Employees = Store<Employee, ManualKey<number>>;
+```
+
 ### Auto Incrementing
 
 ```ts
