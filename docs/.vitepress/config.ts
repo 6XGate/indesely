@@ -6,6 +6,7 @@ export default defineConfig({
   title: 'Indesely',
   description: 'IndexedDB with Kysely Style',
   cleanUrls: true,
+  base: '/indesely/',
   themeConfig: {
     nav: nav(),
 
