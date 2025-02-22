@@ -2,13 +2,13 @@ import { coverageConfigDefaults, defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
+    open: false,
     include: ['tests/**/*.test.ts'],
     setupFiles: ['tests/setup/database.ts'],
     restoreMocks: true,
     unstubEnvs: true,
     unstubGlobals: true,
     typecheck: {
-      enabled: true,
       tsconfig: './tsconfig.test.json',
       include: ['tests/**/*.ts'],
     },

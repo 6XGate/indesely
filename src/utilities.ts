@@ -1,14 +1,8 @@
 import { withResolvers } from './compat.js';
 import type { Constructor, IsAny } from 'type-fest';
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-function-type -- Must be raw type.
-export function isFunction(value: unknown): value is Function {
-  return typeof value === 'function';
-}
-
-export type Class<T, Arguments extends unknown[] = unknown[]> = Constructor<T, Arguments> & { prototype: T };
-export function isClass<T>(value: unknown): value is Class<T> {
-  return isFunction(value) && value.toString().startsWith('class ');
+export function isConstructor(value: unknown): value is Constructor<unknown> {
+  return typeof value === 'function' && value.toString().startsWith('class ');
 }
 
 export function getMessage(cause: unknown) {

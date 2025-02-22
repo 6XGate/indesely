@@ -37,6 +37,7 @@ export class Transaction<Schema extends Record<string, object>> {
       const result = await scope(this);
 
       trx.oncomplete = () => resolve(result);
+      /* v8 ignore next 2 -- Hard to forcibly test */
       trx.onerror = () => reject(trx.error ?? new Error('Unknown transaction error'));
       trx.onabort = () => reject(trx.error ?? new Error('Transaction aborted'));
 

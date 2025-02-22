@@ -1,6 +1,6 @@
 import { KeyCursor, ValueCursor } from './cursor.js';
 import { ObjectStore } from './schema.js';
-import { isClass, waitOnRequest } from './utilities.js';
+import { isConstructor, waitOnRequest } from './utilities.js';
 import type { AutoIncrement, KeyOf, ManualKey, MemberPaths, MemberType, UpgradingKey } from './schema.js';
 
 /** Comparison operators of the where clause. */
@@ -31,8 +31,9 @@ async function waitForRow<Row>(request: IDBRequest<Row | undefined>) {
   return row ?? null;
 }
 
+type ErrorConstructor = new (...args: ConstructorParameters<typeof Error>) => Error;
 type ErrorFactory = (...args: ConstructorParameters<typeof Error>) => Error;
-type ErrorSource = typeof Error | ErrorFactory;
+type ErrorSource = ErrorFactory | ErrorConstructor;
 
 /**
  * Selection query builder options.
@@ -192,7 +193,7 @@ export class SelectQueryBuilder<Row extends object, Key, Indices extends object,
       throw new Error('No record found');
     }
 
-    if (isClass<Error>(error)) {
+    if (isConstructor(error)) {
       throw new error('No record found');
     }
 
@@ -248,7 +249,7 @@ export class SelectQueryBuilder<Row extends object, Key, Indices extends object,
       throw new Error('No record found');
     }
 
-    if (isClass<Error>(error)) {
+    if (isConstructor(error)) {
       throw new error('No record found');
     }
 
@@ -289,7 +290,7 @@ export class SelectQueryBuilder<Row extends object, Key, Indices extends object,
     last?: MemberType<Row, Indices[Index]>,
   ) {
     if (this.#range != null || this.#index != null) {
-      throw new SyntaxError('where clause cannot be redefined');
+      throw new SyntaxError('Where clause cannot be redefined');
     }
 
     const store = this.handle;
@@ -312,19 +313,24 @@ export class SelectQueryBuilder<Row extends object, Key, Indices extends object,
         return new SelectQueryBuilder<Row, Key, Indices, Indices[Index]>({ store, index });
     }
 
-    if (last == null) throw new SyntaxError(`Missing upper bounds for "${op}" operator`);
+    // The upper bounds has to be checked in each case; otherwise, an unknown
+    // operator will produce the wrong kind of error.
 
     switch (op) {
       case '[]':
+        if (last == null) throw new SyntaxError(`Missing upper bounds for ${op}`);
         index = [name, IDBKeyRange.bound(first, last, false, false)];
         return new SelectQueryBuilder<Row, Key, Indices, Indices[Index]>({ store, index });
       case '(]':
+        if (last == null) throw new SyntaxError(`Missing upper bounds for ${op}`);
         index = [name, IDBKeyRange.bound(first, last, true, false)];
         return new SelectQueryBuilder<Row, Key, Indices, Indices[Index]>({ store, index });
       case '()':
+        if (last == null) throw new SyntaxError(`Missing upper bounds for ${op}`);
         index = [name, IDBKeyRange.bound(first, last, true, true)];
         return new SelectQueryBuilder<Row, Key, Indices, Indices[Index]>({ store, index });
       case '[)':
+        if (last == null) throw new SyntaxError(`Missing upper bounds for ${op}`);
         index = [name, IDBKeyRange.bound(first, last, false, true)];
         return new SelectQueryBuilder<Row, Key, Indices, Indices[Index]>({ store, index });
       default:
@@ -354,7 +360,7 @@ export class SelectQueryBuilder<Row extends object, Key, Indices extends object,
   /** The {@link whereKey} implementation. */
   whereKey(op: Operators, first: KeyOf<Row, Key>, last?: KeyOf<Row, Key>) {
     if (this.#range != null || this.#index != null) {
-      throw new SyntaxError('where clause cannot be redefined');
+      throw new SyntaxError('Where clause cannot be redefined');
     }
 
     const store = this.handle;
@@ -377,19 +383,24 @@ export class SelectQueryBuilder<Row extends object, Key, Indices extends object,
         return new SelectQueryBuilder<Row, Key, Indices>({ store, range });
     }
 
-    if (last == null) throw new SyntaxError('Missing upper bounds');
+    // The upper bounds has to be checked in each case; otherwise, an unknown
+    // operator will produce the wrong kind of error.
 
     switch (op) {
       case '[]':
+        if (last == null) throw new SyntaxError(`Missing upper bounds for ${op}`);
         range = IDBKeyRange.bound(first, last, false, false);
         return new SelectQueryBuilder<Row, Key, Indices>({ store, range });
       case '(]':
+        if (last == null) throw new SyntaxError(`Missing upper bounds for ${op}`);
         range = IDBKeyRange.bound(first, last, true, false);
         return new SelectQueryBuilder<Row, Key, Indices>({ store, range });
       case '()':
+        if (last == null) throw new SyntaxError(`Missing upper bounds for ${op}`);
         range = IDBKeyRange.bound(first, last, true, true);
         return new SelectQueryBuilder<Row, Key, Indices>({ store, range });
       case '[)':
+        if (last == null) throw new SyntaxError(`Missing upper bounds for ${op}`);
         range = IDBKeyRange.bound(first, last, false, true);
         return new SelectQueryBuilder<Row, Key, Indices>({ store, range });
       default:

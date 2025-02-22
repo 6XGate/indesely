@@ -52,6 +52,97 @@ describe('Basic operations', () => {
     });
   });
 
+  test('Where misuse', async () => {
+    await expect(database.read(['rows'], async (trx) => await trx.selectFrom('rows').getFirst())).rejects.toThrow(
+      SyntaxError('Missing where clause'),
+    );
+    await expect(
+      database.read(['rows'], async (trx) => await trx.selectFrom('rows').getFirstOrThrow()),
+    ).rejects.toThrow(SyntaxError('Missing where clause'));
+    await expect(database.read(['rows'], async (trx) => await trx.selectFrom('rows').getFirstKey())).rejects.toThrow(
+      SyntaxError('Missing where clause'),
+    );
+    await expect(
+      database.read(['rows'], async (trx) => await trx.selectFrom('rows').getFirstKeyOrThrow()),
+    ).rejects.toThrow(SyntaxError('Missing where clause'));
+    await expect(
+      database.read(['rows'], (trx) =>
+        // @ts-expect-error -- Expect an error because `whereKey` has been omitted.
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
+        trx.selectFrom('rows').whereKey('=', 1).whereKey('=', 1),
+      ),
+    ).rejects.toThrow(SyntaxError('Where clause cannot be redefined'));
+    await expect(
+      database.read(['rows'], (trx) =>
+        // @ts-expect-error -- Expect an error because `whereKey` has been omitted and no such named index.
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
+        trx.selectFrom('rows').whereKey('=', 1).where('unknown', '=', 1),
+      ),
+    ).rejects.toThrow(SyntaxError('Where clause cannot be redefined'));
+    // whereKey arguments...
+    await expect(
+      database.read(['rows'], (trx) =>
+        // @ts-expect-error -- Unknown operator.
+        trx.selectFrom('rows').whereKey('==', 1),
+      ),
+    ).rejects.toThrow(SyntaxError('Unknown operator =='));
+    await expect(
+      database.read(['rows'], (trx) =>
+        // @ts-expect-error -- Missing upper bounds.
+        trx.selectFrom('rows').whereKey('[]', 1),
+      ),
+    ).rejects.toThrow(SyntaxError('Missing upper bounds for []'));
+    await expect(
+      database.read(['rows'], (trx) =>
+        // @ts-expect-error -- Missing upper bounds.
+        trx.selectFrom('rows').whereKey('(]', 1),
+      ),
+    ).rejects.toThrow(SyntaxError('Missing upper bounds for (]'));
+    await expect(
+      database.read(['rows'], (trx) =>
+        // @ts-expect-error -- Missing upper bounds.
+        trx.selectFrom('rows').whereKey('[)', 1),
+      ),
+    ).rejects.toThrow(SyntaxError('Missing upper bounds for [)'));
+    await expect(
+      database.read(['rows'], (trx) =>
+        // @ts-expect-error -- Missing upper bounds.
+        trx.selectFrom('rows').whereKey('()', 1),
+      ),
+    ).rejects.toThrow(SyntaxError('Missing upper bounds for ()'));
+    // where arguments...
+    await expect(
+      database.read(['rows'], (trx) =>
+        // @ts-expect-error -- Unknown operator and unknown index.
+        trx.selectFrom('rows').where('unknown', '==', 1),
+      ),
+    ).rejects.toThrow(SyntaxError('Unknown operator =='));
+    await expect(
+      database.read(['rows'], (trx) =>
+        // @ts-expect-error -- Missing upper bounds and unknown index.
+        trx.selectFrom('rows').where('unknown', '[]', 1),
+      ),
+    ).rejects.toThrow(SyntaxError('Missing upper bounds for []'));
+    await expect(
+      database.read(['rows'], (trx) =>
+        // @ts-expect-error -- Missing upper bounds and unknown index.
+        trx.selectFrom('rows').where('unknown', '(]', 1),
+      ),
+    ).rejects.toThrow(SyntaxError('Missing upper bounds for (]'));
+    await expect(
+      database.read(['rows'], (trx) =>
+        // @ts-expect-error -- Missing upper bounds and unknown index.
+        trx.selectFrom('rows').where('unknown', '[)', 1),
+      ),
+    ).rejects.toThrow(SyntaxError('Missing upper bounds for [)'));
+    await expect(
+      database.read(['rows'], (trx) =>
+        // @ts-expect-error -- Missing upper bounds and unknown index.
+        trx.selectFrom('rows').where('unknown', '()', 1),
+      ),
+    ).rejects.toThrow(SyntaxError('Missing upper bounds for ()'));
+  });
+
   describe('Cursors', () => {
     test('Value cursor', async () => {
       await database.read(['rows'], async (trx) => {
@@ -385,22 +476,35 @@ describe('Key lookup operations', () => {
           await expect(
             database.read(['rows'], async (trx) => await trx.selectFrom('rows').whereKey('=', 99).getFirstKeyOrThrow()),
           ).rejects.toThrow(Error);
+          class TestError extends Error {}
+          // TestError will be seen as a class.
+          await expect(
+            database.read(
+              ['rows'],
+              async (trx) => await trx.selectFrom('rows').whereKey('=', 99).getFirstOrThrow(TestError),
+            ),
+          ).rejects.toThrow(TestError);
+          // ReferenceError is not seen as a class.
           await expect(
             database.read(
               ['rows'],
               async (trx) => await trx.selectFrom('rows').whereKey('=', 99).getFirstOrThrow(ReferenceError),
             ),
           ).rejects.toThrow(ReferenceError);
+          // TestError will be seen as a class.
           await expect(
             database.read(
               ['rows'],
-              async (trx) =>
-                await trx
-                  .selectFrom('rows')
-                  .whereKey('=', 99)
-                  .getFirstOrThrow(() => new Error('Hi')),
+              async (trx) => await trx.selectFrom('rows').whereKey('=', 99).getFirstKeyOrThrow(TestError),
             ),
-          ).rejects.toThrow(new Error('Hi'));
+          ).rejects.toThrow(TestError);
+          // ReferenceError is not seen as a class.
+          await expect(
+            database.read(
+              ['rows'],
+              async (trx) => await trx.selectFrom('rows').whereKey('=', 99).getFirstKeyOrThrow(ReferenceError),
+            ),
+          ).rejects.toThrow(ReferenceError);
         });
       });
       test('Update', async () => {
@@ -442,6 +546,59 @@ describe('Key lookup operations', () => {
     });
     describe('Relative to keys', () => {
       describe('Cursors', () => {
+        test('Raw iterator, >', async () => {
+          await database.read(['rows'], async (trx) => {
+            let pos = 3;
+            const iterator = trx.selectFrom('rows').whereKey('>', 3).stream();
+            for (let result = await iterator.next(); !result.done; result = await iterator.next(2)) {
+              // const cursor = result.value;
+              const [value] = records.at(pos) ?? [];
+              // expect(cursor.key).toBe(key);
+              // expect(cursor.primaryKey).toBe(key);
+              expect(result.value).toStrictEqual(value);
+
+              pos += 2;
+            }
+            expect(pos).toBe(9);
+
+            pos = 8;
+            const keyIterator = trx.selectFrom('rows').whereKey('>', 3).streamKeys('prev');
+            for (let result = await keyIterator.next(); !result.done; result = await keyIterator.next(2)) {
+              // const cursor = result.value;
+              const [, key] = records.at(pos) ?? [];
+              // expect(cursor.key).toBe(key);
+              // expect(cursor.primaryKey).toBe(key);
+              expect(result.value).toStrictEqual(key);
+              pos -= 2;
+            }
+            expect(pos).toBe(2);
+
+            pos = 3;
+            const primaryIterator = trx.selectFrom('rows').whereKey('>', 3).streamPrimaryKeys();
+            for (let result = await primaryIterator.next(); !result.done; result = await primaryIterator.next(2)) {
+              // const cursor = result.value;
+              const [, key] = records.at(pos) ?? [];
+              // expect(cursor.key).toBe(key);
+              // expect(cursor.primaryKey).toBe(key);
+              expect(result.value).toStrictEqual(key);
+
+              pos += 2;
+            }
+            expect(pos).toBe(9);
+
+            pos = 3;
+            for await (const result of trx.selectFrom('rows').whereKey('>', 3)) {
+              // const cursor = result.value;
+              const [row] = records.at(pos) ?? [];
+              // expect(cursor.key).toBe(key);
+              // expect(cursor.primaryKey).toBe(key);
+              expect(result).toStrictEqual(row);
+
+              pos += 1;
+            }
+            expect(pos).toBe(9);
+          });
+        });
         test('Value cursor, >', async () => {
           await database.read(['rows'], async (trx) => {
             let pos = 3;
@@ -840,11 +997,243 @@ describe('Key lookup operations', () => {
 });
 
 describe('Indexed lookup operations', () => {
+  type Row = {
+    name: string;
+    balance: number;
+    type: string;
+  };
+
+  type Schema = {
+    rows: Store<Row, ManualKey<number>, { name: 'name'; type: 'type' }>;
+  };
+
+  let useDatabase: DatabaseFactory<Schema>;
+  let records: ReadonlyTuple<[row: Row, id: number], 9>;
+  let database: Database<Schema>;
+
+  beforeEach(async () => {
+    useDatabase = defineDatabase<Schema>({
+      name: suiteName,
+      migrations: [
+        (trx) => trx.createStore('rows').createIndex('name', 'name', { unique: true }).createIndex('type', 'type'),
+      ],
+    });
+
+    records = [
+      [{ name: 'Malcolm', balance: 20_092.76, type: 'checking' }, 1],
+      [{ name: 'Zoë', balance: 17_521.86, type: 'checking' }, 2],
+      [{ name: 'Hoban', balance: 10_784.41, type: 'checking' }, 3],
+      [{ name: 'Jayne', balance: 10_282.05, type: 'checking' }, 4],
+      [{ name: 'Kaywinnet', balance: 12_401.22, type: 'checking' }, 5],
+      [{ name: 'River', balance: 102_102.01, type: 'savings' }, 6],
+      [{ name: 'Simon', balance: 97_208.11, type: 'savings' }, 7],
+      [{ name: 'Inara', balance: 31_100.49, type: 'savings' }, 8],
+      [{ name: 'Derrial', balance: 5_789.12, type: 'savings' }, 9],
+    ];
+
+    database = useDatabase();
+    await database.change(['rows'], async (trx) => {
+      const builder = trx.update('rows');
+      for (const [row, id] of records) {
+        await builder.add(row, id);
+      }
+    });
+  });
+
   describe('Direct values', () => {
-    describe.todo('Cursors');
-    describe.todo('Retrieval');
-    describe.todo('Update');
-    describe.todo('Delete');
+    describe('Cursors', () => {
+      test('Value cursor', async () => {
+        await expect(
+          database.read(['rows'], async (trx) => {
+            let count = 0;
+            const [value, key] = records[0];
+            for await (const cursor of trx.selectFrom('rows').where('name', '=', 'Malcolm').cursor()) {
+              expect(cursor.key).toBe(value.name);
+              expect(cursor.primaryKey).toBe(key);
+              expect(cursor.value).toStrictEqual(value);
+
+              count += 1;
+            }
+
+            return count;
+          }),
+        ).resolves.toBe(1);
+      });
+      test('Key cursor', async () => {
+        await expect(
+          database.read(['rows'], async (trx) => {
+            let count = 0;
+            const [value, key] = records[1];
+            for await (const cursor of trx.selectFrom('rows').where('name', '=', 'Zoë').keyCursor()) {
+              expect(cursor.key).toBe(value.name);
+              expect(cursor.primaryKey).toBe(key);
+
+              count += 1;
+            }
+
+            return count;
+          }),
+        ).resolves.toBe(1);
+      });
+      test('Value stream', async () => {
+        await expect(
+          database.read(['rows'], async (trx) => {
+            let count = 0;
+            const [value] = records[2];
+            for await (const row of trx.selectFrom('rows').where('name', '=', 'Hoban').stream()) {
+              expect(row).toStrictEqual(value);
+
+              count += 1;
+            }
+
+            return count;
+          }),
+        ).resolves.toBe(1);
+      });
+      test('Key stream', async () => {
+        await expect(
+          database.read(['rows'], async (trx) => {
+            let count = 0;
+            const [value] = records[3];
+            for await (const key of trx.selectFrom('rows').where('name', '=', 'Jayne').streamKeys()) {
+              expect(key).toStrictEqual(value.name);
+
+              count += 1;
+            }
+
+            return count;
+          }),
+        ).resolves.toBe(1);
+      });
+      test('Primary key stream', async () => {
+        await expect(
+          database.read(['rows'], async (trx) => {
+            let count = 0;
+            const [, value] = records[4];
+            for await (const key of trx.selectFrom('rows').where('name', '=', 'Kaywinnet').streamPrimaryKeys()) {
+              expect(key).toStrictEqual(value);
+
+              count += 1;
+            }
+
+            return count;
+          }),
+        ).resolves.toBe(1);
+      });
+    });
+    describe('Retrieval', () => {
+      test('"All"', async () => {
+        await expect(
+          database.read(['rows'], async (trx) => await trx.selectFrom('rows').where('type', '=', 'checking').getAll()),
+        ).resolves.toStrictEqual(records.filter(([row]) => row.type === 'checking').map(([row]) => row));
+        await expect(
+          database.read(
+            ['rows'],
+            async (trx) => await trx.selectFrom('rows').where('type', '=', 'checking').getAllKeys(),
+          ),
+        ).resolves.toStrictEqual(records.filter(([row]) => row.type === 'checking').map(([, key]) => key));
+        await expect(
+          database.read(['rows'], async (trx) => await trx.selectFrom('rows').where('type', '=', 'checking').count()),
+        ).resolves.toBe(5);
+      });
+      test('First or null', async () => {
+        const [value, key] = records[5];
+        await expect(
+          database.read(['rows'], async (trx) => await trx.selectFrom('rows').where('type', '=', 'savings').getFirst()),
+        ).resolves.toStrictEqual(value);
+        await expect(
+          database.read(
+            ['rows'],
+            async (trx) => await trx.selectFrom('rows').where('type', '=', 'savings').getFirstKey(),
+          ),
+        ).resolves.toStrictEqual(key);
+        await expect(
+          database.read(['rows'], async (trx) => await trx.selectFrom('rows').where('type', '=', 'cd').getFirst()),
+        ).resolves.toStrictEqual(null);
+        await expect(
+          database.read(['rows'], async (trx) => await trx.selectFrom('rows').where('type', '=', 'cd').getFirstKey()),
+        ).resolves.toStrictEqual(undefined);
+      });
+      test('First or fail', async () => {
+        const [value, key] = records[5];
+        await expect(
+          database.read(
+            ['rows'],
+            async (trx) => await trx.selectFrom('rows').where('type', '=', 'savings').getFirstOrThrow(),
+          ),
+        ).resolves.toStrictEqual(value);
+        await expect(
+          database.read(
+            ['rows'],
+            async (trx) => await trx.selectFrom('rows').where('type', '=', 'savings').getFirstKeyOrThrow(),
+          ),
+        ).resolves.toStrictEqual(key);
+        await expect(
+          database.read(
+            ['rows'],
+            async (trx) => await trx.selectFrom('rows').where('type', '=', 'cd').getFirstOrThrow(),
+          ),
+        ).rejects.toThrow(Error);
+        await expect(
+          database.read(
+            ['rows'],
+            async (trx) => await trx.selectFrom('rows').where('type', '=', 'cd').getFirstKeyOrThrow(),
+          ),
+        ).rejects.toThrow(Error);
+        await expect(
+          database.read(
+            ['rows'],
+            async (trx) => await trx.selectFrom('rows').whereKey('=', 99).getFirstOrThrow(ReferenceError),
+          ),
+        ).rejects.toThrow(ReferenceError);
+        await expect(
+          database.read(
+            ['rows'],
+            async (trx) =>
+              await trx
+                .selectFrom('rows')
+                .whereKey('=', 99)
+                .getFirstOrThrow(() => new Error('Hi')),
+          ),
+        ).rejects.toThrow(new Error('Hi'));
+      });
+    });
+    test('Update', async () => {
+      const changes = new Array<Row>();
+      await database.change(['rows'], async (trx) => {
+        for await (const cursor of trx.selectFrom('rows').where('type', '=', 'savings').cursor()) {
+          const row = cursor.value;
+          const change = { ...row, balance: row.balance / 2 };
+          await expect(cursor.update(change)).resolves.toBe(cursor.primaryKey);
+          changes.push(change);
+        }
+      });
+
+      expect(changes).toHaveLength(4);
+      await expect(
+        database.read(['rows'], async (trx) => await trx.selectFrom('rows').where('type', '=', 'savings').getAll()),
+      ).resolves.toStrictEqual(changes);
+    });
+    test('Delete', async () => {
+      await expect(
+        database.change(['rows'], async (trx) => {
+          let count = 0;
+          for await (const cursor of trx.selectFrom('rows').where('type', '=', 'checking').cursor()) {
+            await cursor.delete();
+            count += 1;
+          }
+
+          return count;
+        }),
+      ).resolves.toBe(5);
+
+      await expect(
+        database.read(['rows'], async (trx) => await trx.selectFrom('rows').where('type', '=', 'checking').getAll()),
+      ).resolves.toStrictEqual([]);
+      await expect(
+        database.read(['rows'], async (trx) => await trx.selectFrom('rows').where('type', '=', 'checking').count()),
+      ).resolves.toBe(0);
+    });
   });
   describe('Relative to values', () => {
     describe.todo('Cursors');

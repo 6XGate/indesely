@@ -66,8 +66,7 @@ export class Cursor<Row, Key, PrimaryKey, Input extends IDBCursor | IDBCursorWit
    */
   async update(record: Row) {
     const key = await waitOnRequest(this.handle.update(record));
-    // TODO: Test if this is the primary or index key.
-    return key as Key;
+    return key as PrimaryKey;
   }
 
   /**
@@ -79,6 +78,7 @@ export class Cursor<Row, Key, PrimaryKey, Input extends IDBCursor | IDBCursorWit
 
     const request = this.#request;
 
+    /* v8 ignore next 1 -- Hard to forcibly test */
     request.onerror = () => reject(request.error ?? new Error('Unknown cursor error'));
 
     request.onsuccess = () => {
