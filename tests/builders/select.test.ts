@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, test } from 'vitest';
-import { defineDatabase } from '../../src';
+import { defineDatabase, AutoIncrement } from '../../src';
 import { getSuitePath } from '../tools/utilities';
 import type { Database, DatabaseFactory, ManualKey, Store } from '../../src';
+import type { Tuple } from '../tools/utilities';
 import type { ReadonlyTuple } from 'type-fest';
 
 let suiteName: string;
@@ -219,48 +220,48 @@ describe('Basic operations', () => {
 });
 
 describe('Key lookup operations', () => {
-  type Row = {
-    name: string;
-    balance: number;
-    type: string;
-  };
-
-  type Schema = {
-    rows: Store<Row, ManualKey<number>>;
-  };
-
-  let useDatabase: DatabaseFactory<Schema>;
-  let records: ReadonlyTuple<[row: Row, id: number], 9>;
-  let database: Database<Schema>;
-
-  beforeEach(async () => {
-    useDatabase = defineDatabase<Schema>({
-      name: suiteName,
-      migrations: [(trx) => trx.createStore('rows')],
-    });
-
-    records = [
-      [{ name: 'Malcolm', balance: 20_092.76, type: 'checking' }, 1],
-      [{ name: 'Zoë', balance: 17_521.86, type: 'checking' }, 2],
-      [{ name: 'Hoban', balance: 10_784.41, type: 'checking' }, 3],
-      [{ name: 'Jayne', balance: 10_282.05, type: 'checking' }, 4],
-      [{ name: 'Kaywinnet', balance: 12_401.22, type: 'checking' }, 5],
-      [{ name: 'River', balance: 102_102.01, type: 'checking' }, 6],
-      [{ name: 'Simon', balance: 97_208.11, type: 'checking' }, 7],
-      [{ name: 'Inara', balance: 31_100.49, type: 'checking' }, 8],
-      [{ name: 'Derrial', balance: 5_789.12, type: 'checking' }, 9],
-    ];
-
-    database = useDatabase();
-    await database.change(['rows'], async (trx) => {
-      const builder = trx.update('rows');
-      for (const [row, id] of records) {
-        await builder.add(row, id);
-      }
-    });
-  });
-
   describe('Manual key', () => {
+    type Row = {
+      name: string;
+      balance: number;
+      type: string;
+    };
+
+    type Schema = {
+      rows: Store<Row, ManualKey<number>>;
+    };
+
+    let useDatabase: DatabaseFactory<Schema>;
+    let records: ReadonlyTuple<[row: Row, id: number], 9>;
+    let database: Database<Schema>;
+
+    beforeEach(async () => {
+      useDatabase = defineDatabase<Schema>({
+        name: suiteName,
+        migrations: [(trx) => trx.createStore('rows')],
+      });
+
+      records = [
+        [{ name: 'Malcolm', balance: 20_092.76, type: 'checking' }, 1],
+        [{ name: 'Zoë', balance: 17_521.86, type: 'checking' }, 2],
+        [{ name: 'Hoban', balance: 10_784.41, type: 'checking' }, 3],
+        [{ name: 'Jayne', balance: 10_282.05, type: 'checking' }, 4],
+        [{ name: 'Kaywinnet', balance: 12_401.22, type: 'checking' }, 5],
+        [{ name: 'River', balance: 102_102.01, type: 'checking' }, 6],
+        [{ name: 'Simon', balance: 97_208.11, type: 'checking' }, 7],
+        [{ name: 'Inara', balance: 31_100.49, type: 'checking' }, 8],
+        [{ name: 'Derrial', balance: 5_789.12, type: 'checking' }, 9],
+      ];
+
+      database = useDatabase();
+      await database.change(['rows'], async (trx) => {
+        const builder = trx.update('rows');
+        for (const [row, id] of records) {
+          await builder.add(row, id);
+        }
+      });
+    });
+
     describe('Direct keys', () => {
       describe('Cursors', () => {
         test('Value cursor', async () => {
@@ -384,6 +385,22 @@ describe('Key lookup operations', () => {
           await expect(
             database.read(['rows'], async (trx) => await trx.selectFrom('rows').whereKey('=', 99).getFirstKeyOrThrow()),
           ).rejects.toThrow(Error);
+          await expect(
+            database.read(
+              ['rows'],
+              async (trx) => await trx.selectFrom('rows').whereKey('=', 99).getFirstOrThrow(ReferenceError),
+            ),
+          ).rejects.toThrow(ReferenceError);
+          await expect(
+            database.read(
+              ['rows'],
+              async (trx) =>
+                await trx
+                  .selectFrom('rows')
+                  .whereKey('=', 99)
+                  .getFirstOrThrow(() => new Error('Hi')),
+            ),
+          ).rejects.toThrow(new Error('Hi'));
         });
       });
       test('Update', async () => {
@@ -424,59 +441,401 @@ describe('Key lookup operations', () => {
       });
     });
     describe('Relative to keys', () => {
-      describe.todo('Cursors');
-      describe.todo('Retrieval');
-      describe.todo('Update');
-      describe.todo('Delete');
+      describe('Cursors', () => {
+        test('Value cursor, >', async () => {
+          await database.read(['rows'], async (trx) => {
+            let pos = 3;
+            for await (const cursor of trx.selectFrom('rows').whereKey('>', 3).cursor()) {
+              const [value, key] = records.at(pos) ?? [];
+              expect(cursor.key).toBe(key);
+              expect(cursor.primaryKey).toBe(key);
+              expect(cursor.value).toStrictEqual(value);
+
+              pos += 1;
+            }
+            expect(pos).toBe(9);
+            for await (const cursor of trx.selectFrom('rows').whereKey('>', 3).cursor('prev')) {
+              pos -= 1;
+
+              const [value, key] = records.at(pos) ?? [];
+              expect(cursor.key).toBe(key);
+              expect(cursor.primaryKey).toBe(key);
+              expect(cursor.value).toStrictEqual(value);
+            }
+            expect(pos).toBe(3);
+          });
+        });
+        test('Key cursor, >=', async () => {
+          await database.read(['rows'], async (trx) => {
+            let pos = 2;
+            for await (const cursor of trx.selectFrom('rows').whereKey('>=', 3).keyCursor()) {
+              const [, key] = records.at(pos) ?? [];
+              expect(cursor.key).toBe(key);
+              expect(cursor.primaryKey).toBe(key);
+
+              pos += 1;
+            }
+            expect(pos).toBe(9);
+            for await (const cursor of trx.selectFrom('rows').whereKey('>=', 3).keyCursor('prev')) {
+              pos -= 1;
+
+              const [, key] = records.at(pos) ?? [];
+              expect(cursor.key).toBe(key);
+              expect(cursor.primaryKey).toBe(key);
+            }
+            expect(pos).toBe(2);
+          });
+        });
+        test('Value stream, <', async () => {
+          await database.read(['rows'], async (trx) => {
+            let pos = 0;
+            for await (const row of trx.selectFrom('rows').whereKey('<', 7).stream()) {
+              const [value] = records.at(pos) ?? [];
+              expect(row).toStrictEqual(value);
+
+              pos += 1;
+            }
+            expect(pos).toBe(6);
+            for await (const row of trx.selectFrom('rows').whereKey('<', 7).stream('prev')) {
+              pos -= 1;
+
+              const [value] = records.at(pos) ?? [];
+              expect(row).toStrictEqual(value);
+            }
+            expect(pos).toBe(0);
+          });
+        });
+        test('Key stream, <=', async () => {
+          await database.read(['rows'], async (trx) => {
+            let pos = 0;
+            for await (const key of trx.selectFrom('rows').whereKey('<=', 7).streamKeys()) {
+              const [, value] = records.at(pos) ?? [];
+              expect(key).toStrictEqual(value);
+
+              pos += 1;
+            }
+            expect(pos).toBe(7);
+            for await (const key of trx.selectFrom('rows').whereKey('<=', 7).streamKeys('prev')) {
+              pos -= 1;
+
+              const [, value] = records.at(pos) ?? [];
+              expect(key).toStrictEqual(value);
+            }
+            expect(pos).toBe(0);
+          });
+        });
+      });
+      test('Retrieval', async () => {
+        await expect(
+          database.read(['rows'], async (trx) => await trx.selectFrom('rows').whereKey('>', 3).getAll()),
+        ).resolves.toStrictEqual(records.slice(3).map(([row]) => row));
+        await expect(
+          database.read(['rows'], async (trx) => await trx.selectFrom('rows').whereKey('>', 3).getAllKeys()),
+        ).resolves.toStrictEqual(records.slice(3).map(([, key]) => key));
+        await expect(
+          database.read(['rows'], async (trx) => await trx.selectFrom('rows').whereKey('>', 3).count()),
+        ).resolves.toBe(6);
+      });
+      test('Update', async () => {
+        const changes = new Array<Row>();
+        await database.change(['rows'], async (trx) => {
+          for await (const cursor of trx.selectFrom('rows').whereKey('>', 3).cursor()) {
+            const row = cursor.value;
+            const change = { ...row, balance: row.balance / 2 };
+            await cursor.update(change);
+            changes.push(change);
+          }
+        });
+
+        expect(changes).toHaveLength(6);
+        await expect(
+          database.read(['rows'], async (trx) => await trx.selectFrom('rows').whereKey('>', 3).getAll()),
+        ).resolves.toStrictEqual(changes);
+      });
+      test('Delete', async () => {
+        await database.change(['rows'], async (trx) => {
+          let count = 0;
+          for await (const cursor of trx.selectFrom('rows').whereKey('>', 3).cursor()) {
+            await cursor.delete();
+            count += 1;
+          }
+
+          expect(count).toBe(6);
+        });
+
+        await expect(
+          database.read(['rows'], async (trx) => await trx.selectFrom('rows').getAll()),
+        ).resolves.toStrictEqual(records.toSpliced(3).map(([value]) => value));
+        await expect(database.read(['rows'], async (trx) => await trx.selectFrom('rows').count())).resolves.toBe(3);
+      });
     });
     describe('Keys in range', () => {
-      describe.todo('Cursors');
-      describe.todo('Retrieval');
-      describe.todo('Update');
-      describe.todo('Delete');
+      describe('Cursors', () => {
+        test('Value cursor, []', async () => {
+          await database.read(['rows'], async (trx) => {
+            let pos = 2;
+            for await (const cursor of trx.selectFrom('rows').whereKey('[]', 3, 7).cursor()) {
+              const [value, key] = records.at(pos) ?? [];
+              expect(cursor.key).toBe(key);
+              expect(cursor.primaryKey).toBe(key);
+              expect(cursor.value).toStrictEqual(value);
+
+              pos += 1;
+            }
+            expect(pos).toBe(7);
+            for await (const cursor of trx.selectFrom('rows').whereKey('[]', 3, 7).cursor('prev')) {
+              pos -= 1;
+
+              const [value, key] = records.at(pos) ?? [];
+              expect(cursor.key).toBe(key);
+              expect(cursor.primaryKey).toBe(key);
+              expect(cursor.value).toStrictEqual(value);
+            }
+            expect(pos).toBe(2);
+          });
+        });
+        test('Key cursor, [)', async () => {
+          await database.read(['rows'], async (trx) => {
+            let pos = 2;
+            for await (const cursor of trx.selectFrom('rows').whereKey('[)', 3, 7).keyCursor()) {
+              const [, key] = records.at(pos) ?? [];
+              expect(cursor.key).toBe(key);
+              expect(cursor.primaryKey).toBe(key);
+
+              pos += 1;
+            }
+            expect(pos).toBe(6);
+            for await (const cursor of trx.selectFrom('rows').whereKey('[)', 3, 7).keyCursor('prev')) {
+              pos -= 1;
+
+              const [, key] = records.at(pos) ?? [];
+              expect(cursor.key).toBe(key);
+              expect(cursor.primaryKey).toBe(key);
+            }
+            expect(pos).toBe(2);
+          });
+        });
+        test('Value stream, (]', async () => {
+          await database.read(['rows'], async (trx) => {
+            let pos = 3;
+            for await (const row of trx.selectFrom('rows').whereKey('(]', 3, 7).stream()) {
+              const [value] = records.at(pos) ?? [];
+              expect(row).toStrictEqual(value);
+
+              pos += 1;
+            }
+            expect(pos).toBe(7);
+            for await (const row of trx.selectFrom('rows').whereKey('(]', 3, 7).stream('prev')) {
+              pos -= 1;
+
+              const [value] = records.at(pos) ?? [];
+              expect(row).toStrictEqual(value);
+            }
+            expect(pos).toBe(3);
+          });
+        });
+        test('Key stream, ()', async () => {
+          await database.read(['rows'], async (trx) => {
+            let pos = 3;
+            for await (const key of trx.selectFrom('rows').whereKey('()', 3, 7).streamKeys()) {
+              const [, value] = records.at(pos) ?? [];
+              expect(key).toStrictEqual(value);
+
+              pos += 1;
+            }
+            expect(pos).toBe(6);
+            for await (const key of trx.selectFrom('rows').whereKey('()', 3, 7).streamKeys('prev')) {
+              pos -= 1;
+
+              const [, value] = records.at(pos) ?? [];
+              expect(key).toStrictEqual(value);
+            }
+            expect(pos).toBe(3);
+          });
+        });
+        test('Primary key stream, []', async () => {
+          await database.read(['rows'], async (trx) => {
+            let pos = 2;
+            for await (const key of trx.selectFrom('rows').whereKey('[]', 3, 7).streamPrimaryKeys()) {
+              const [, value] = records.at(pos) ?? [];
+              expect(key).toStrictEqual(value);
+
+              pos += 1;
+            }
+            expect(pos).toBe(7);
+            for await (const key of trx.selectFrom('rows').whereKey('[]', 3, 7).streamPrimaryKeys('prev')) {
+              pos -= 1;
+
+              const [, value] = records.at(pos) ?? [];
+              expect(key).toStrictEqual(value);
+            }
+            expect(pos).toBe(2);
+          });
+        });
+        test('Advancing cursor, []', async () => {
+          await database.read(['rows'], async (trx) => {
+            let pos = 2;
+            for await (const cursor of trx.selectFrom('rows').whereKey('[]', 3, 7).cursor()) {
+              const [value, key] = records.at(pos) ?? [];
+              expect(cursor.key).toBe(key);
+              expect(cursor.primaryKey).toBe(key);
+              expect(cursor.value).toStrictEqual(value);
+
+              cursor.advance(2);
+              pos += 2;
+            }
+            expect(pos).toBe(8);
+          });
+        });
+        test('Continuing cursor, []', async () => {
+          await database.read(['rows'], async (trx) => {
+            let pos = 2;
+            for await (const cursor of trx.selectFrom('rows').whereKey('[]', 3, 7).cursor()) {
+              const [value, key] = records.at(pos) ?? [];
+              expect(cursor.key).toBe(key);
+              expect(cursor.primaryKey).toBe(key);
+              expect(cursor.value).toStrictEqual(value);
+
+              cursor.continue(pos + 3);
+              pos += 2;
+            }
+            expect(pos).toBe(8);
+          });
+        });
+      });
+      test('Retrieval', async () => {
+        await expect(
+          database.read(['rows'], async (trx) => await trx.selectFrom('rows').whereKey('[]', 3, 7).getAll()),
+        ).resolves.toStrictEqual(records.slice(2, 7).map(([row]) => row));
+        await expect(
+          database.read(['rows'], async (trx) => await trx.selectFrom('rows').whereKey('[]', 3, 7).getAllKeys()),
+        ).resolves.toStrictEqual(records.slice(2, 7).map(([, key]) => key));
+        await expect(
+          database.read(['rows'], async (trx) => await trx.selectFrom('rows').whereKey('[]', 3, 7).count()),
+        ).resolves.toBe(5);
+      });
+      test('Update', async () => {
+        const changes = new Array<Row>();
+        await database.change(['rows'], async (trx) => {
+          for await (const cursor of trx.selectFrom('rows').whereKey('[]', 3, 7).cursor()) {
+            const row = cursor.value;
+            const change = { ...row, balance: row.balance / 2 };
+            await cursor.update(change);
+            changes.push(change);
+          }
+        });
+
+        expect(changes).toHaveLength(5);
+        await expect(
+          database.read(['rows'], async (trx) => await trx.selectFrom('rows').whereKey('[]', 3, 7).getAll()),
+        ).resolves.toStrictEqual(changes);
+      });
+      test('Delete', async () => {
+        await database.change(['rows'], async (trx) => {
+          let count = 0;
+          for await (const cursor of trx.selectFrom('rows').whereKey('[]', 3, 7).cursor()) {
+            await cursor.delete();
+            count += 1;
+          }
+
+          expect(count).toBe(5);
+        });
+
+        await expect(
+          database.read(['rows'], async (trx) => await trx.selectFrom('rows').getAll()),
+        ).resolves.toStrictEqual(records.toSpliced(2, 5).map(([value]) => value));
+        await expect(database.read(['rows'], async (trx) => await trx.selectFrom('rows').count())).resolves.toBe(4);
+      });
     });
   });
 
-  describe('Auto increment key', () => {
-    describe('Direct keys', () => {
-      describe.todo('Cursors');
-      describe.todo('Retrieval');
-      describe.todo('Update');
-      describe.todo('Delete');
+  test('Auto increment key', async () => {
+    type Row = {
+      name: string;
+      balance: number;
+      type: string;
+    };
+
+    type Schema = {
+      rows: Store<Row, AutoIncrement>;
+    };
+
+    const useDatabase = defineDatabase<Schema>({
+      name: suiteName,
+      migrations: [(trx) => trx.createStore('rows', AutoIncrement)],
     });
-    describe('Relative to keys', () => {
-      describe.todo('Cursors');
-      describe.todo('Retrieval');
-      describe.todo('Update');
-      describe.todo('Delete');
+
+    const records = [
+      [{ name: 'Malcolm', balance: 20_092.76, type: 'checking' }, 1],
+      [{ name: 'Zoë', balance: 17_521.86, type: 'checking' }, 2],
+      [{ name: 'Hoban', balance: 10_784.41, type: 'checking' }, 3],
+      [{ name: 'Jayne', balance: 10_282.05, type: 'checking' }, 4],
+      [{ name: 'Kaywinnet', balance: 12_401.22, type: 'checking' }, 5],
+      [{ name: 'River', balance: 102_102.01, type: 'checking' }, 6],
+      [{ name: 'Simon', balance: 97_208.11, type: 'checking' }, 7],
+      [{ name: 'Inara', balance: 31_100.49, type: 'checking' }, 8],
+      [{ name: 'Derrial', balance: 5_789.12, type: 'checking' }, 9],
+    ] satisfies Tuple<Tuple>;
+
+    const database = useDatabase();
+    await database.change(['rows'], async (trx) => {
+      const builder = trx.update('rows');
+      for (const [row] of records) {
+        await builder.add(row);
+      }
     });
-    describe('Keys in range', () => {
-      describe.todo('Cursors');
-      describe.todo('Retrieval');
-      describe.todo('Update');
-      describe.todo('Delete');
-    });
+
+    await expect(database.read(['rows'], async (trx) => await trx.selectFrom('rows').getAll())).resolves.toStrictEqual(
+      records.map(([row]) => row),
+    );
+    await expect(
+      database.read(['rows'], async (trx) => await trx.selectFrom('rows').getAllKeys()),
+    ).resolves.toStrictEqual(records.map(([, key]) => key));
   });
 
-  describe('Automatic key', () => {
-    describe('Direct keys', () => {
-      describe.todo('Cursors');
-      describe.todo('Retrieval');
-      describe.todo('Update');
-      describe.todo('Delete');
+  test('Automatic key', async () => {
+    type Row = {
+      id: number;
+      name: string;
+      balance: number;
+      type: string;
+    };
+
+    type Schema = {
+      rows: Store<Row, AutoIncrement>;
+    };
+
+    const useDatabase = defineDatabase<Schema>({
+      name: suiteName,
+      migrations: [(trx) => trx.createStore('rows', AutoIncrement)],
     });
-    describe('Relative to keys', () => {
-      describe.todo('Cursors');
-      describe.todo('Retrieval');
-      describe.todo('Update');
-      describe.todo('Delete');
+
+    const records = [
+      { id: 1, name: 'Malcolm', balance: 20_092.76, type: 'checking' },
+      { id: 2, name: 'Zoë', balance: 17_521.86, type: 'checking' },
+      { id: 3, name: 'Hoban', balance: 10_784.41, type: 'checking' },
+      { id: 4, name: 'Jayne', balance: 10_282.05, type: 'checking' },
+      { id: 5, name: 'Kaywinnet', balance: 12_401.22, type: 'checking' },
+      { id: 6, name: 'River', balance: 102_102.01, type: 'checking' },
+      { id: 7, name: 'Simon', balance: 97_208.11, type: 'checking' },
+      { id: 8, name: 'Inara', balance: 31_100.49, type: 'checking' },
+      { id: 9, name: 'Derrial', balance: 5_789.12, type: 'checking' },
+    ] satisfies Tuple;
+
+    const database = useDatabase();
+    await database.change(['rows'], async (trx) => {
+      const builder = trx.update('rows');
+      for (const row of records) {
+        await builder.add(row);
+      }
     });
-    describe('Keys in range', () => {
-      describe.todo('Cursors');
-      describe.todo('Retrieval');
-      describe.todo('Update');
-      describe.todo('Delete');
-    });
+
+    await expect(database.read(['rows'], async (trx) => await trx.selectFrom('rows').getAll())).resolves.toStrictEqual(
+      records.map((row) => row),
+    );
+    await expect(
+      database.read(['rows'], async (trx) => await trx.selectFrom('rows').getAllKeys()),
+    ).resolves.toStrictEqual(records.map((row) => row.id));
   });
 });
 
