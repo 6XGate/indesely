@@ -20,8 +20,9 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
+          cache-dependency-path: ./package.json
           node-version-file: .nvmrc
-          cache: 'npm'
+          cache: yarn
       - uses: browser-actions/setup-chrome@v1
       - uses: browser-actions/setup-firefox@v1
       - name: Install dependencies
