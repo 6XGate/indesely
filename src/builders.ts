@@ -26,6 +26,18 @@ export type UpdateArgsFor<Row extends object, Key> = Key extends AutoIncrement
           ? [record: Row]
           : never;
 
+export type UpsertArgsFor<Row extends object, Key> = Key extends AutoIncrement
+  ? [record: Row, key?: number]
+  : Key extends ManualKey<infer K>
+    ? [record: Row, key: K]
+    : Key extends UpgradingKey
+      ? [record: Row, key?: IDBValidKey]
+      : Key extends MemberPaths<Row>[]
+        ? [record: Row]
+        : Key extends MemberPaths<Row>
+          ? [record: Row]
+          : never;
+
 async function waitForRow<Row>(request: IDBRequest<Row | undefined>) {
   const row = await waitOnRequest(request);
   return row ?? null;
@@ -434,7 +446,7 @@ export class UpdateQueryBuilder<Row extends object, Key> extends ObjectStore {
   }
 
   /** Adds or updates a record to or in the store. */
-  async put(...[record, key]: UpdateArgsFor<Row, Key>) {
+  async put(...[record, key]: UpsertArgsFor<Row, Key>) {
     const result = await waitOnRequest(this.handle.put(record, key));
     return result as KeyOf<Row, Key>;
   }
@@ -498,22 +510,22 @@ export class DeleteQueryBuilder<Row extends object, Key> extends ObjectStore {
 
     switch (op) {
       case '[]':
-        if (last == null) throw new SyntaxError('Missing upper bounds');
+        if (last == null) throw new SyntaxError(`Missing upper bounds for ${op}`);
         range = IDBKeyRange.bound(first, last, false, false);
         await waitOnRequest(this.handle.delete(range));
         return;
       case '(]':
-        if (last == null) throw new SyntaxError('Missing upper bounds');
+        if (last == null) throw new SyntaxError(`Missing upper bounds for ${op}`);
         range = IDBKeyRange.bound(first, last, true, false);
         await waitOnRequest(this.handle.delete(range));
         return;
       case '()':
-        if (last == null) throw new SyntaxError('Missing upper bounds');
+        if (last == null) throw new SyntaxError(`Missing upper bounds for ${op}`);
         range = IDBKeyRange.bound(first, last, true, true);
         await waitOnRequest(this.handle.delete(range));
         return;
       case '[)':
-        if (last == null) throw new SyntaxError('Missing upper bounds');
+        if (last == null) throw new SyntaxError(`Missing upper bounds for ${op}`);
         range = IDBKeyRange.bound(first, last, false, true);
         await waitOnRequest(this.handle.delete(range));
         return;

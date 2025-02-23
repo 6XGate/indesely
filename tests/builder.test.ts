@@ -1,5 +1,5 @@
 import { describe, expectTypeOf, it } from 'vitest';
-import type { UpdateArgsFor, AutoIncrement, ManualKey, UpgradingKey } from '../src';
+import type { UpdateArgsFor, AutoIncrement, ManualKey, UpgradingKey, UpsertArgsFor } from '../src';
 
 interface Model {
   id: string;
@@ -18,5 +18,16 @@ describe('Type information', () => {
     expectTypeOf<UpdateArgsFor<Model, UpgradingKey>>().toEqualTypeOf<[a: Model, b?: IDBValidKey]>();
     expectTypeOf<UpdateArgsFor<Model, string>>().toEqualTypeOf<never>();
     expectTypeOf<UpdateArgsFor<Model, [string]>>().toEqualTypeOf<never>();
+  });
+
+  it('Upsert arguments', () => {
+    expectTypeOf<UpsertArgsFor<Model, 'id'>>().toEqualTypeOf<[Model]>();
+    expectTypeOf<UpsertArgsFor<Model, ['id', 'name.first']>>().toEqualTypeOf<[Model]>();
+    expectTypeOf<UpsertArgsFor<Model, AutoIncrement>>().toEqualTypeOf<[m: Model, k?: number]>();
+    expectTypeOf<UpsertArgsFor<Model, ManualKey>>().toEqualTypeOf<[Model, IDBValidKey]>();
+    expectTypeOf<UpsertArgsFor<Model, ManualKey<number>>>().toEqualTypeOf<[Model, number]>();
+    expectTypeOf<UpsertArgsFor<Model, UpgradingKey>>().toEqualTypeOf<[a: Model, b?: IDBValidKey]>();
+    expectTypeOf<UpsertArgsFor<Model, string>>().toEqualTypeOf<never>();
+    expectTypeOf<UpsertArgsFor<Model, [string]>>().toEqualTypeOf<never>();
   });
 });

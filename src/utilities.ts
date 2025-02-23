@@ -42,7 +42,16 @@ export async function requestDatabasePersistence(fail = false) {
   return isPersistent;
 }
 
+/** Default error translator. */
 const defaultErrorTranslator = (cause: DOMException | null): Error | null => cause;
+
+/** Determines the final request error. */
+function requestError(error: DOMException | null, onError = defaultErrorTranslator) {
+  let final = onError(error);
+  /* v8 ignore next 1 -- Hard to forcibly tests */
+  if (final == null) final = new Error('Unknown request failure');
+  return final;
+}
 
 /**
  * Waits on a IndexedDB request to succeed or fail.
@@ -55,7 +64,7 @@ export async function waitOnRequest<T>(request: IDBRequest<T>, onError = default
   const { promise, resolve, reject } = withResolvers<T>();
 
   request.onsuccess = () => resolve(request.result);
-  request.onerror = () => reject(onError(request.error) ?? new Error('Unknown request failure'));
+  request.onerror = () => reject(requestError(request.error, onError));
 
   return await promise;
 }

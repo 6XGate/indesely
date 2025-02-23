@@ -23,7 +23,7 @@ outline: deep
 
   ```ts
   class UpdateQueryBuilder {
-    // When the store has an specified or auto-incremented key.
+    // When the store has a specified or auto-incremented key.
     add(record: Row): Promise<PrimaryKey>;
     // When the store has a manual key.
     add(record: Row, key: IDBValidKey): Promise<PrimaryKey>;
@@ -53,8 +53,10 @@ outline: deep
 
   ```ts
   class UpdateQueryBuilder {
-    // When the store has an specified or auto-incremented key.
+    // When the store has a specified key.
     put(record: Row): Promise<PrimaryKey>;
+    // When the store has an auto-incremented key.
+    put(record: Row, key?: number): Promise<PrimaryKey>;
     // When the store has a manual key.
     put(record: Row, key: IDBValidKey): Promise<PrimaryKey>;
     // When the store in accessed in a migration.
@@ -67,7 +69,7 @@ outline: deep
 - **Parameters**
 
   - `record` — The record to be added or replaced to the store.
-  - `key` — If required, the key for record.
+  - `key` — If required, or optionally, the key for record.
 
 - **Type Parameters**
 

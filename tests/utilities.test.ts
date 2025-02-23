@@ -31,7 +31,7 @@ describe('requestDatabasePersistence', () => {
     await expect(requestDatabasePersistence()).resolves.toBe(false);
   });
 
-  test("Shouldn't cause an error", async () => {
+  test('Should cause an error', async () => {
     await expect(requestDatabasePersistence(true)).rejects.toThrow();
   });
 });

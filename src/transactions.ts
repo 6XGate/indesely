@@ -25,6 +25,11 @@ export class Transaction<Schema extends Record<string, object>> {
     return new ObjectStore(this.handle.objectStore(String(name)));
   }
 
+  /** Forcibly aborts the transaction. */
+  abort() {
+    this.handle.abort();
+  }
+
   /**
    * Runs the callback {@link scope} within the transaction.
    * @internal
@@ -37,15 +42,15 @@ export class Transaction<Schema extends Record<string, object>> {
       const result = await scope(this);
 
       trx.oncomplete = () => resolve(result);
-      /* v8 ignore next 2 -- Hard to forcibly test */
+      /* v8 ignore next 1 -- Hard to forcibly test */
       trx.onerror = () => reject(trx.error ?? new Error('Unknown transaction error'));
       trx.onabort = () => reject(trx.error ?? new Error('Transaction aborted'));
-
-      return await promise;
     } catch (error) {
       trx.abort();
       throw error;
     }
+
+    return await promise;
   }
 }
 

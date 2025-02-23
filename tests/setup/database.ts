@@ -7,7 +7,8 @@ beforeAll(async (context) => {
   const databases = await listDatabases();
   await Promise.all(
     databases.map(async (database) => {
-      if (database.startsWith(prefix)) await dropDatabase(database);
+      if (database.startsWith(`${prefix}/`)) await dropDatabase(database);
+      else if (database === prefix) await dropDatabase(database);
     }),
   );
 });
@@ -20,7 +21,8 @@ beforeEach(async (context) => {
   const databases = await listDatabases();
   await Promise.all(
     databases.map(async (database) => {
-      if (database.startsWith(prefix)) await dropDatabase(database);
+      if (database.startsWith(`${prefix}/`)) await dropDatabase(database);
+      else if (database === prefix) await dropDatabase(database);
     }),
   );
 });

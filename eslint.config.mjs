@@ -49,6 +49,10 @@ export default tseslint.config(
 
       // Always require brackets if a statement is multiline.
       'curly': ['error', 'multi-line'],
+      // Don't allow variable shadowing.
+      'no-shadow': 'error',
+      // Prefer string templates over concatenation.
+      'prefer-template': 'error',
       // Empty cases with fallthrough are a common, and not misleading pattern.
       'no-fallthrough': [
         'error',

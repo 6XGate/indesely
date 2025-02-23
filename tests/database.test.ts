@@ -55,7 +55,6 @@ describe('Database', () => {
     rows: Store<{ name: string; maybe?: unknown }, AutoIncrement, { maybe: 'maybe' }>;
   };
 
-  let suiteName: string;
   let useDatabase: DatabaseFactory<TestSchema>;
   beforeEach((context) => {
     suiteName = getSuitePath(context);

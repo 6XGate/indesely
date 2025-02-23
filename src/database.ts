@@ -155,18 +155,18 @@ export function defineDatabase<Schema extends Record<string, object>>(options: D
       /* v8 ignore next 1 -- Hard to forcibly test */
       if (request.transaction == null) throw new Error('No transaction');
       const migrator = new DatabaseBuilder(request.transaction);
-      let name: string | undefined;
+      let migrationName: string | undefined;
       try {
         await migrator.run(async (trx) => {
-          let version = ev.oldVersion;
+          let migrationVersion = ev.oldVersion;
           for (const migration of migrations.slice(ev.oldVersion)) {
-            version += 1;
-            name = migration.name ? migration.name : String(version);
+            migrationVersion += 1;
+            migrationName = migration.name ? migration.name : String(migrationVersion);
             await migration(trx);
           }
         });
       } catch (err) {
-        migrationError = new MigrationError(name, err);
+        migrationError = new MigrationError(migrationName, err);
       }
     };
 

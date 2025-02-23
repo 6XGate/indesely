@@ -4,6 +4,18 @@ outline: deep
 
 # Query API: Transaction
 
+## abort()
+
+- **Summary**
+
+  ```ts
+  class Transaction {
+    abort(): void;
+  }
+  ```
+
+  Forcibly aborts the transaction.
+
 ## selectFrom()
 
 - **Summary**

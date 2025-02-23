@@ -2,8 +2,7 @@ import { alphabetical } from 'radashi';
 import { beforeEach, describe, expect, test } from 'vitest';
 import { defineDatabase, AutoIncrement } from '../../src';
 import { getSuitePath } from '../tools/utilities';
-import type { Database, DatabaseFactory, ManualKey, Store } from '../../src';
-import type { Tuple } from '../tools/utilities';
+import type { Database, ManualKey, Store } from '../../src';
 import type { ReadonlyTuple } from 'type-fest';
 
 let suiteName: string;
@@ -11,38 +10,44 @@ beforeEach((context) => {
   suiteName = getSuitePath(context);
 });
 
+type Row = {
+  name: string;
+  balance: number;
+  type: string;
+};
+
+type ManualKeySchema = { rows: Store<Row> };
+type TypedKeySchema = { rows: Store<Row, ManualKey<number>> };
+type IncrementKeySchema = { rows: Store<Row, AutoIncrement> };
+type ModelKeySchema = { rows: Store<Row, 'name'> };
+type IndexedStore = { rows: Store<Row, ManualKey, { name: 'name'; type: 'type' }> };
+
+let records: ReadonlyTuple<[row: Row, id: number], 9>;
+let sorted: typeof records;
+beforeEach(() => {
+  records = [
+    [{ name: 'Malcolm', balance: 20_092.76, type: 'checking' }, 1],
+    [{ name: 'Zoë', balance: 17_521.86, type: 'checking' }, 2],
+    [{ name: 'Hoban', balance: 10_784.41, type: 'checking' }, 3],
+    [{ name: 'Jayne', balance: 10_282.05, type: 'checking' }, 4],
+    [{ name: 'Kaywinnet', balance: 12_401.22, type: 'checking' }, 5],
+    [{ name: 'River', balance: 102_102.01, type: 'savings' }, 6],
+    [{ name: 'Simon', balance: 97_208.11, type: 'savings' }, 7],
+    [{ name: 'Inara', balance: 31_100.49, type: 'savings' }, 8],
+    [{ name: 'Derrial', balance: 5_789.12, type: 'savings' }, 9],
+  ];
+
+  sorted = alphabetical(records, ([record]) => record.name) as never;
+});
+
 describe('Basic operations', () => {
-  type Row = {
-    name: string;
-    balance: number;
-    type: string;
-  };
-
-  type Schema = {
-    rows: Store<Row>;
-  };
-
-  let useDatabase: DatabaseFactory<Schema>;
-  let records: ReadonlyTuple<[row: Row, id: IDBValidKey], 9>;
-  let database: Database<Schema>;
+  let database: Database<ManualKeySchema>;
 
   beforeEach(async () => {
-    useDatabase = defineDatabase<Schema>({
+    const useDatabase = defineDatabase<ManualKeySchema>({
       name: suiteName,
       migrations: [(trx) => trx.createStore('rows')],
     });
-
-    records = [
-      [{ name: 'Malcolm', balance: 20_092.76, type: 'checking' }, 1],
-      [{ name: 'Zoë', balance: 17_521.86, type: 'checking' }, 2],
-      [{ name: 'Hoban', balance: 10_784.41, type: 'checking' }, 3],
-      [{ name: 'Jayne', balance: 10_282.05, type: 'checking' }, 4],
-      [{ name: 'Kaywinnet', balance: 12_401.22, type: 'checking' }, 5],
-      [{ name: 'River', balance: 102_102.01, type: 'checking' }, 6],
-      [{ name: 'Simon', balance: 97_208.11, type: 'checking' }, 7],
-      [{ name: 'Inara', balance: 31_100.49, type: 'checking' }, 8],
-      [{ name: 'Derrial', balance: 5_789.12, type: 'checking' }, 9],
-    ];
 
     database = useDatabase();
     await database.change(['rows'], async (trx) => {
@@ -179,6 +184,7 @@ describe('Basic operations', () => {
         }
       });
     });
+
     test('Key cursor', async () => {
       await database.read(['rows'], async (trx) => {
         let pos = 0;
@@ -198,6 +204,7 @@ describe('Basic operations', () => {
         }
       });
     });
+
     test('Value stream', async () => {
       await database.read(['rows'], async (trx) => {
         let pos = 0;
@@ -215,6 +222,7 @@ describe('Basic operations', () => {
         }
       });
     });
+
     test('Key stream', async () => {
       await database.read(['rows'], async (trx) => {
         let pos = 0;
@@ -232,6 +240,7 @@ describe('Basic operations', () => {
         }
       });
     });
+
     test('Primary key stream', async () => {
       await database.read(['rows'], async (trx) => {
         let pos = 0;
@@ -249,6 +258,7 @@ describe('Basic operations', () => {
         }
       });
     });
+
     test('Advancing cursor', async () => {
       await database.read(['rows'], async (trx) => {
         let pos = 0;
@@ -263,6 +273,7 @@ describe('Basic operations', () => {
         }
       });
     });
+
     test('Continuing cursor', async () => {
       await database.read(['rows'], async (trx) => {
         let pos = 0;
@@ -278,6 +289,7 @@ describe('Basic operations', () => {
       });
     });
   });
+
   test('Retrieval', async () => {
     await expect(database.read(['rows'], async (trx) => await trx.selectFrom('rows').getAll())).resolves.toStrictEqual(
       records.map(([row]) => row),
@@ -287,6 +299,7 @@ describe('Basic operations', () => {
     ).resolves.toStrictEqual(records.map(([, key]) => key));
     await expect(database.read(['rows'], async (trx) => await trx.selectFrom('rows').count())).resolves.toBe(9);
   });
+
   test('Update', async () => {
     const changes = new Array<Row>();
     await database.change(['rows'], async (trx) => {
@@ -302,6 +315,7 @@ describe('Basic operations', () => {
       changes,
     );
   });
+
   test('Delete', async () => {
     const kept = new Array<Row>();
     await database.change(['rows'], async (trx) => {
@@ -326,37 +340,13 @@ describe('Basic operations', () => {
 
 describe('Key lookup operations', () => {
   describe('Manual key', () => {
-    type Row = {
-      name: string;
-      balance: number;
-      type: string;
-    };
-
-    type Schema = {
-      rows: Store<Row, ManualKey<number>>;
-    };
-
-    let useDatabase: DatabaseFactory<Schema>;
-    let records: ReadonlyTuple<[row: Row, id: number], 9>;
-    let database: Database<Schema>;
+    let database: Database<TypedKeySchema>;
 
     beforeEach(async () => {
-      useDatabase = defineDatabase<Schema>({
+      const useDatabase = defineDatabase<TypedKeySchema>({
         name: suiteName,
         migrations: [(trx) => trx.createStore('rows')],
       });
-
-      records = [
-        [{ name: 'Malcolm', balance: 20_092.76, type: 'checking' }, 1],
-        [{ name: 'Zoë', balance: 17_521.86, type: 'checking' }, 2],
-        [{ name: 'Hoban', balance: 10_784.41, type: 'checking' }, 3],
-        [{ name: 'Jayne', balance: 10_282.05, type: 'checking' }, 4],
-        [{ name: 'Kaywinnet', balance: 12_401.22, type: 'checking' }, 5],
-        [{ name: 'River', balance: 102_102.01, type: 'checking' }, 6],
-        [{ name: 'Simon', balance: 97_208.11, type: 'checking' }, 7],
-        [{ name: 'Inara', balance: 31_100.49, type: 'checking' }, 8],
-        [{ name: 'Derrial', balance: 5_789.12, type: 'checking' }, 9],
-      ];
 
       database = useDatabase();
       await database.change(['rows'], async (trx) => {
@@ -386,6 +376,7 @@ describe('Key lookup operations', () => {
             }),
           ).resolves.toBe(1);
         });
+
         test('Key cursor', async () => {
           await expect(
             database.read(['rows'], async (trx) => {
@@ -402,6 +393,7 @@ describe('Key lookup operations', () => {
             }),
           ).resolves.toBe(1);
         });
+
         test('Value stream', async () => {
           await expect(
             database.read(['rows'], async (trx) => {
@@ -417,6 +409,7 @@ describe('Key lookup operations', () => {
             }),
           ).resolves.toBe(1);
         });
+
         test('Key stream', async () => {
           await expect(
             database.read(['rows'], async (trx) => {
@@ -432,6 +425,7 @@ describe('Key lookup operations', () => {
             }),
           ).resolves.toBe(1);
         });
+
         test('Primary key stream', async () => {
           await expect(
             database.read(['rows'], async (trx) => {
@@ -448,6 +442,7 @@ describe('Key lookup operations', () => {
           ).resolves.toBe(1);
         });
       });
+
       describe('Retrieval', () => {
         test('"All"', async () => {
           const [value, key] = records[4];
@@ -461,6 +456,7 @@ describe('Key lookup operations', () => {
             database.read(['rows'], async (trx) => await trx.selectFrom('rows').whereKey('=', 5).count()),
           ).resolves.toBe(1);
         });
+
         test('First or null', async () => {
           const [value, key] = records[4];
           await expect(
@@ -476,6 +472,7 @@ describe('Key lookup operations', () => {
             database.read(['rows'], async (trx) => await trx.selectFrom('rows').whereKey('=', 99).getFirstKey()),
           ).resolves.toStrictEqual(undefined);
         });
+
         test('First or fail', async () => {
           const [value, key] = records[4];
           await expect(
@@ -521,6 +518,7 @@ describe('Key lookup operations', () => {
           ).rejects.toThrow(ReferenceError);
         });
       });
+
       test('Update', async () => {
         const changes = new Array<Row>();
         await database.change(['rows'], async (trx) => {
@@ -537,6 +535,7 @@ describe('Key lookup operations', () => {
           database.read(['rows'], async (trx) => await trx.selectFrom('rows').whereKey('=', 5).getAll()),
         ).resolves.toStrictEqual(changes);
       });
+
       test('Delete', async () => {
         await expect(
           database.change(['rows'], async (trx) => {
@@ -558,6 +557,7 @@ describe('Key lookup operations', () => {
         ).resolves.toBe(0);
       });
     });
+
     describe('Relative to keys', () => {
       describe('Cursors', () => {
         test('Raw iterator, >', async () => {
@@ -601,6 +601,7 @@ describe('Key lookup operations', () => {
             expect(pos).toBe(9);
           });
         });
+
         test('Value cursor, >', async () => {
           await database.read(['rows'], async (trx) => {
             let pos = 3;
@@ -624,6 +625,7 @@ describe('Key lookup operations', () => {
             expect(pos).toBe(3);
           });
         });
+
         test('Key cursor, >=', async () => {
           await database.read(['rows'], async (trx) => {
             let pos = 2;
@@ -645,6 +647,7 @@ describe('Key lookup operations', () => {
             expect(pos).toBe(2);
           });
         });
+
         test('Value stream, <', async () => {
           await database.read(['rows'], async (trx) => {
             let pos = 0;
@@ -664,6 +667,7 @@ describe('Key lookup operations', () => {
             expect(pos).toBe(0);
           });
         });
+
         test('Key stream, <=', async () => {
           await database.read(['rows'], async (trx) => {
             let pos = 0;
@@ -684,6 +688,7 @@ describe('Key lookup operations', () => {
           });
         });
       });
+
       test('Retrieval', async () => {
         await expect(
           database.read(['rows'], async (trx) => await trx.selectFrom('rows').whereKey('>', 3).getAll()),
@@ -695,6 +700,7 @@ describe('Key lookup operations', () => {
           database.read(['rows'], async (trx) => await trx.selectFrom('rows').whereKey('>', 3).count()),
         ).resolves.toBe(6);
       });
+
       test('Update', async () => {
         const changes = new Array<Row>();
         await database.change(['rows'], async (trx) => {
@@ -711,6 +717,7 @@ describe('Key lookup operations', () => {
           database.read(['rows'], async (trx) => await trx.selectFrom('rows').whereKey('>', 3).getAll()),
         ).resolves.toStrictEqual(changes);
       });
+
       test('Delete', async () => {
         await database.change(['rows'], async (trx) => {
           let count = 0;
@@ -728,6 +735,7 @@ describe('Key lookup operations', () => {
         await expect(database.read(['rows'], async (trx) => await trx.selectFrom('rows').count())).resolves.toBe(3);
       });
     });
+
     describe('Keys in range', () => {
       describe('Cursors', () => {
         test('Value cursor, []', async () => {
@@ -753,6 +761,7 @@ describe('Key lookup operations', () => {
             expect(pos).toBe(2);
           });
         });
+
         test('Key cursor, [)', async () => {
           await database.read(['rows'], async (trx) => {
             let pos = 2;
@@ -774,6 +783,7 @@ describe('Key lookup operations', () => {
             expect(pos).toBe(2);
           });
         });
+
         test('Value stream, (]', async () => {
           await database.read(['rows'], async (trx) => {
             let pos = 3;
@@ -793,6 +803,7 @@ describe('Key lookup operations', () => {
             expect(pos).toBe(3);
           });
         });
+
         test('Key stream, ()', async () => {
           await database.read(['rows'], async (trx) => {
             let pos = 3;
@@ -812,6 +823,7 @@ describe('Key lookup operations', () => {
             expect(pos).toBe(3);
           });
         });
+
         test('Primary key stream, []', async () => {
           await database.read(['rows'], async (trx) => {
             let pos = 2;
@@ -831,6 +843,7 @@ describe('Key lookup operations', () => {
             expect(pos).toBe(2);
           });
         });
+
         test('Advancing cursor, []', async () => {
           await database.read(['rows'], async (trx) => {
             let pos = 2;
@@ -846,6 +859,7 @@ describe('Key lookup operations', () => {
             expect(pos).toBe(8);
           });
         });
+
         test('Continuing cursor, []', async () => {
           await database.read(['rows'], async (trx) => {
             let pos = 2;
@@ -862,6 +876,7 @@ describe('Key lookup operations', () => {
           });
         });
       });
+
       test('Retrieval', async () => {
         await expect(
           database.read(['rows'], async (trx) => await trx.selectFrom('rows').whereKey('[]', 3, 7).getAll()),
@@ -873,6 +888,7 @@ describe('Key lookup operations', () => {
           database.read(['rows'], async (trx) => await trx.selectFrom('rows').whereKey('[]', 3, 7).count()),
         ).resolves.toBe(5);
       });
+
       test('Update', async () => {
         const changes = new Array<Row>();
         await database.change(['rows'], async (trx) => {
@@ -889,6 +905,7 @@ describe('Key lookup operations', () => {
           database.read(['rows'], async (trx) => await trx.selectFrom('rows').whereKey('[]', 3, 7).getAll()),
         ).resolves.toStrictEqual(changes);
       });
+
       test('Delete', async () => {
         await database.change(['rows'], async (trx) => {
           let count = 0;
@@ -908,33 +925,11 @@ describe('Key lookup operations', () => {
     });
   });
 
-  test('Auto increment key', async () => {
-    type Row = {
-      name: string;
-      balance: number;
-      type: string;
-    };
-
-    type Schema = {
-      rows: Store<Row, AutoIncrement>;
-    };
-
-    const useDatabase = defineDatabase<Schema>({
+  test('Increment key', async () => {
+    const useDatabase = defineDatabase<IncrementKeySchema>({
       name: suiteName,
       migrations: [(trx) => trx.createStore('rows', AutoIncrement)],
     });
-
-    const records = [
-      [{ name: 'Malcolm', balance: 20_092.76, type: 'checking' }, 1],
-      [{ name: 'Zoë', balance: 17_521.86, type: 'checking' }, 2],
-      [{ name: 'Hoban', balance: 10_784.41, type: 'checking' }, 3],
-      [{ name: 'Jayne', balance: 10_282.05, type: 'checking' }, 4],
-      [{ name: 'Kaywinnet', balance: 12_401.22, type: 'checking' }, 5],
-      [{ name: 'River', balance: 102_102.01, type: 'checking' }, 6],
-      [{ name: 'Simon', balance: 97_208.11, type: 'checking' }, 7],
-      [{ name: 'Inara', balance: 31_100.49, type: 'checking' }, 8],
-      [{ name: 'Derrial', balance: 5_789.12, type: 'checking' }, 9],
-    ] satisfies Tuple<Tuple>;
 
     const database = useDatabase();
     await database.change(['rows'], async (trx) => {
@@ -952,86 +947,41 @@ describe('Key lookup operations', () => {
     ).resolves.toStrictEqual(records.map(([, key]) => key));
   });
 
-  test('Automatic key', async () => {
-    type Row = {
-      id: number;
-      name: string;
-      balance: number;
-      type: string;
-    };
-
-    type Schema = {
-      rows: Store<Row, AutoIncrement>;
-    };
-
-    const useDatabase = defineDatabase<Schema>({
+  test('In model key', async () => {
+    const useDatabase = defineDatabase<ModelKeySchema>({
       name: suiteName,
-      migrations: [(trx) => trx.createStore('rows', AutoIncrement)],
+      migrations: [(trx) => trx.createStore('rows', 'name')],
     });
-
-    const records = [
-      { id: 1, name: 'Malcolm', balance: 20_092.76, type: 'checking' },
-      { id: 2, name: 'Zoë', balance: 17_521.86, type: 'checking' },
-      { id: 3, name: 'Hoban', balance: 10_784.41, type: 'checking' },
-      { id: 4, name: 'Jayne', balance: 10_282.05, type: 'checking' },
-      { id: 5, name: 'Kaywinnet', balance: 12_401.22, type: 'checking' },
-      { id: 6, name: 'River', balance: 102_102.01, type: 'checking' },
-      { id: 7, name: 'Simon', balance: 97_208.11, type: 'checking' },
-      { id: 8, name: 'Inara', balance: 31_100.49, type: 'checking' },
-      { id: 9, name: 'Derrial', balance: 5_789.12, type: 'checking' },
-    ] satisfies Tuple;
 
     const database = useDatabase();
     await database.change(['rows'], async (trx) => {
       const builder = trx.update('rows');
-      for (const row of records) {
+      for (const [row] of records) {
         await builder.add(row);
       }
     });
 
     await expect(database.read(['rows'], async (trx) => await trx.selectFrom('rows').getAll())).resolves.toStrictEqual(
-      records.map((row) => row),
+      sorted.map(([row]) => row),
     );
     await expect(
       database.read(['rows'], async (trx) => await trx.selectFrom('rows').getAllKeys()),
-    ).resolves.toStrictEqual(records.map((row) => row.id));
+    ).resolves.toStrictEqual(sorted.map(([row]) => row.name));
   });
 });
 
 describe('Indexed lookup operations', () => {
-  type Row = {
-    name: string;
-    balance: number;
-    type: string;
-  };
-
-  type Schema = {
-    rows: Store<Row, ManualKey<number>, { name: 'name'; type: 'type' }>;
-  };
-
-  let useDatabase: DatabaseFactory<Schema>;
-  let records: ReadonlyTuple<[row: Row, id: number], 9>;
-  let database: Database<Schema>;
+  let database: Database<IndexedStore>;
 
   beforeEach(async () => {
-    useDatabase = defineDatabase<Schema>({
+    const useDatabase = defineDatabase<IndexedStore>({
       name: suiteName,
       migrations: [
         (trx) => trx.createStore('rows').createIndex('name', 'name', { unique: true }).createIndex('type', 'type'),
       ],
     });
 
-    records = [
-      [{ name: 'Malcolm', balance: 20_092.76, type: 'checking' }, 1],
-      [{ name: 'Zoë', balance: 17_521.86, type: 'checking' }, 2],
-      [{ name: 'Hoban', balance: 10_784.41, type: 'checking' }, 3],
-      [{ name: 'Jayne', balance: 10_282.05, type: 'checking' }, 4],
-      [{ name: 'Kaywinnet', balance: 12_401.22, type: 'checking' }, 5],
-      [{ name: 'River', balance: 102_102.01, type: 'savings' }, 6],
-      [{ name: 'Simon', balance: 97_208.11, type: 'savings' }, 7],
-      [{ name: 'Inara', balance: 31_100.49, type: 'savings' }, 8],
-      [{ name: 'Derrial', balance: 5_789.12, type: 'savings' }, 9],
-    ];
+    sorted = alphabetical(records, (row) => row[0].name) as never;
 
     database = useDatabase();
     await database.change(['rows'], async (trx) => {
@@ -1061,6 +1011,7 @@ describe('Indexed lookup operations', () => {
           }),
         ).resolves.toBe(1);
       });
+
       test('Key cursor', async () => {
         await expect(
           database.read(['rows'], async (trx) => {
@@ -1077,6 +1028,7 @@ describe('Indexed lookup operations', () => {
           }),
         ).resolves.toBe(1);
       });
+
       test('Value stream', async () => {
         await expect(
           database.read(['rows'], async (trx) => {
@@ -1092,6 +1044,7 @@ describe('Indexed lookup operations', () => {
           }),
         ).resolves.toBe(1);
       });
+
       test('Key stream', async () => {
         await expect(
           database.read(['rows'], async (trx) => {
@@ -1107,6 +1060,7 @@ describe('Indexed lookup operations', () => {
           }),
         ).resolves.toBe(1);
       });
+
       test('Primary key stream', async () => {
         await expect(
           database.read(['rows'], async (trx) => {
@@ -1123,6 +1077,7 @@ describe('Indexed lookup operations', () => {
         ).resolves.toBe(1);
       });
     });
+
     describe('Retrieval', () => {
       test('"All"', async () => {
         await expect(
@@ -1138,6 +1093,7 @@ describe('Indexed lookup operations', () => {
           database.read(['rows'], async (trx) => await trx.selectFrom('rows').where('type', '=', 'checking').count()),
         ).resolves.toBe(5);
       });
+
       test('First or null', async () => {
         const [value, key] = records[5];
         await expect(
@@ -1156,6 +1112,7 @@ describe('Indexed lookup operations', () => {
           database.read(['rows'], async (trx) => await trx.selectFrom('rows').where('type', '=', 'cd').getFirstKey()),
         ).resolves.toStrictEqual(undefined);
       });
+
       test('First or fail', async () => {
         const [value, key] = records[5];
         await expect(
@@ -1200,6 +1157,7 @@ describe('Indexed lookup operations', () => {
         ).rejects.toThrow(new Error('Hi'));
       });
     });
+
     test('Update', async () => {
       const changes = new Array<Row>();
       await database.change(['rows'], async (trx) => {
@@ -1216,6 +1174,7 @@ describe('Indexed lookup operations', () => {
         database.read(['rows'], async (trx) => await trx.selectFrom('rows').where('type', '=', 'savings').getAll()),
       ).resolves.toStrictEqual(changes);
     });
+
     test('Delete', async () => {
       await expect(
         database.change(['rows'], async (trx) => {
@@ -1237,12 +1196,8 @@ describe('Indexed lookup operations', () => {
       ).resolves.toBe(0);
     });
   });
-  describe('Relative to values', () => {
-    let sorted: typeof records;
-    beforeEach(() => {
-      sorted = alphabetical(records, (row) => row[0].name) as never;
-    });
 
+  describe('Relative to values', () => {
     test('Value cursor, >', async () => {
       await database.read(['rows'], async (trx) => {
         let pos = 3;
@@ -1266,6 +1221,7 @@ describe('Indexed lookup operations', () => {
         expect(pos).toBe(3);
       });
     });
+
     test('Key cursor, >=', async () => {
       await database.read(['rows'], async (trx) => {
         let pos = 2;
@@ -1287,6 +1243,7 @@ describe('Indexed lookup operations', () => {
         expect(pos).toBe(2);
       });
     });
+
     test('Value stream, <', async () => {
       await database.read(['rows'], async (trx) => {
         let pos = 0;
@@ -1306,6 +1263,7 @@ describe('Indexed lookup operations', () => {
         expect(pos).toBe(0);
       });
     });
+
     test('Key stream, <=', async () => {
       await database.read(['rows'], async (trx) => {
         let pos = 0;
@@ -1326,98 +1284,96 @@ describe('Indexed lookup operations', () => {
       });
     });
   });
+
   describe('Values in range', () => {
-    let sorted: typeof records;
-    beforeEach(() => {
-      sorted = alphabetical(records, (row) => row[0].name) as never;
+    test('Value cursor, []', async () => {
+      await database.read(['rows'], async (trx) => {
+        let pos = 2;
+        for await (const cursor of trx.selectFrom('rows').where('name', '[]', 'Inara', 'River').cursor()) {
+          const [value, key] = sorted.at(pos) ?? [];
+          expect(cursor.key).toBe(value?.name);
+          expect(cursor.primaryKey).toBe(key);
+          expect(cursor.value).toStrictEqual(value);
+
+          pos += 1;
+        }
+        expect(pos).toBe(7);
+        for await (const cursor of trx.selectFrom('rows').where('name', '[]', 'Inara', 'River').cursor('prev')) {
+          pos -= 1;
+
+          const [value, key] = sorted.at(pos) ?? [];
+          expect(cursor.key).toBe(value?.name);
+          expect(cursor.primaryKey).toBe(key);
+          expect(cursor.value).toStrictEqual(value);
+        }
+        expect(pos).toBe(2);
+      });
     });
-    describe('Cursors', () => {
-      test('Value cursor, []', async () => {
-        await database.read(['rows'], async (trx) => {
-          let pos = 2;
-          for await (const cursor of trx.selectFrom('rows').where('name', '[]', 'Inara', 'River').cursor()) {
-            const [value, key] = sorted.at(pos) ?? [];
-            expect(cursor.key).toBe(value?.name);
-            expect(cursor.primaryKey).toBe(key);
-            expect(cursor.value).toStrictEqual(value);
 
-            pos += 1;
-          }
-          expect(pos).toBe(7);
-          for await (const cursor of trx.selectFrom('rows').where('name', '[]', 'Inara', 'River').cursor('prev')) {
-            pos -= 1;
+    test('Key cursor, [)', async () => {
+      await database.read(['rows'], async (trx) => {
+        let pos = 2;
+        for await (const cursor of trx.selectFrom('rows').where('name', '[)', 'Inara', 'River').keyCursor()) {
+          const [value, key] = sorted.at(pos) ?? [];
+          expect(cursor.key).toBe(value?.name);
+          expect(cursor.primaryKey).toBe(key);
 
-            const [value, key] = sorted.at(pos) ?? [];
-            expect(cursor.key).toBe(value?.name);
-            expect(cursor.primaryKey).toBe(key);
-            expect(cursor.value).toStrictEqual(value);
-          }
-          expect(pos).toBe(2);
-        });
+          pos += 1;
+        }
+        expect(pos).toBe(6);
+        for await (const cursor of trx.selectFrom('rows').where('name', '[)', 'Inara', 'River').keyCursor('prev')) {
+          pos -= 1;
+
+          const [value, key] = sorted.at(pos) ?? [];
+          expect(cursor.key).toBe(value?.name);
+          expect(cursor.primaryKey).toBe(key);
+        }
+        expect(pos).toBe(2);
       });
-      test('Key cursor, [)', async () => {
-        await database.read(['rows'], async (trx) => {
-          let pos = 2;
-          for await (const cursor of trx.selectFrom('rows').where('name', '[)', 'Inara', 'River').keyCursor()) {
-            const [value, key] = sorted.at(pos) ?? [];
-            expect(cursor.key).toBe(value?.name);
-            expect(cursor.primaryKey).toBe(key);
+    });
 
-            pos += 1;
-          }
-          expect(pos).toBe(6);
-          for await (const cursor of trx.selectFrom('rows').where('name', '[)', 'Inara', 'River').keyCursor('prev')) {
-            pos -= 1;
+    test('Value stream, (]', async () => {
+      await database.read(['rows'], async (trx) => {
+        let pos = 3;
+        for await (const row of trx.selectFrom('rows').where('name', '(]', 'Inara', 'River').stream()) {
+          const [value] = sorted.at(pos) ?? [];
+          expect(row).toStrictEqual(value);
 
-            const [value, key] = sorted.at(pos) ?? [];
-            expect(cursor.key).toBe(value?.name);
-            expect(cursor.primaryKey).toBe(key);
-          }
-          expect(pos).toBe(2);
-        });
+          pos += 1;
+        }
+        expect(pos).toBe(7);
+        for await (const row of trx.selectFrom('rows').where('name', '(]', 'Inara', 'River').stream('prev')) {
+          pos -= 1;
+
+          const [value] = sorted.at(pos) ?? [];
+          expect(row).toStrictEqual(value);
+        }
+        expect(pos).toBe(3);
       });
-      test('Value stream, (]', async () => {
-        await database.read(['rows'], async (trx) => {
-          let pos = 3;
-          for await (const row of trx.selectFrom('rows').where('name', '(]', 'Inara', 'River').stream()) {
-            const [value] = sorted.at(pos) ?? [];
-            expect(row).toStrictEqual(value);
+    });
 
-            pos += 1;
-          }
-          expect(pos).toBe(7);
-          for await (const row of trx.selectFrom('rows').where('name', '(]', 'Inara', 'River').stream('prev')) {
-            pos -= 1;
+    test('Key stream, ()', async () => {
+      await database.read(['rows'], async (trx) => {
+        let pos = 3;
+        for await (const key of trx.selectFrom('rows').where('name', '()', 'Inara', 'River').streamKeys()) {
+          const [value] = sorted.at(pos) ?? [];
+          expect(key).toStrictEqual(value?.name);
 
-            const [value] = sorted.at(pos) ?? [];
-            expect(row).toStrictEqual(value);
-          }
-          expect(pos).toBe(3);
-        });
-      });
-      test('Key stream, ()', async () => {
-        await database.read(['rows'], async (trx) => {
-          let pos = 3;
-          for await (const key of trx.selectFrom('rows').where('name', '()', 'Inara', 'River').streamKeys()) {
-            const [value] = sorted.at(pos) ?? [];
-            expect(key).toStrictEqual(value?.name);
+          pos += 1;
+        }
+        expect(pos).toBe(6);
+        for await (const key of trx.selectFrom('rows').where('name', '()', 'Inara', 'River').streamKeys('prev')) {
+          pos -= 1;
 
-            pos += 1;
-          }
-          expect(pos).toBe(6);
-          for await (const key of trx.selectFrom('rows').where('name', '()', 'Inara', 'River').streamKeys('prev')) {
-            pos -= 1;
-
-            const [value] = sorted.at(pos) ?? [];
-            expect(key).toStrictEqual(value?.name);
-          }
-          expect(pos).toBe(3);
-        });
+          const [value] = sorted.at(pos) ?? [];
+          expect(key).toStrictEqual(value?.name);
+        }
+        expect(pos).toBe(3);
       });
     });
   });
+
   test('Sorting with', async () => {
-    const sorted = alphabetical(records, (row) => row[0].name) as unknown as typeof records;
     let pos = 0;
     await database.read(['rows'], async (trx) => {
       for await (const cursor of trx.selectFrom('rows').by('name').cursor()) {
@@ -1430,9 +1386,8 @@ describe('Indexed lookup operations', () => {
       }
     });
   });
-  test('Skipping by combined keys.', async () => {
-    const sorted = alphabetical(records, (row) => row[0].name) as unknown as typeof records;
 
+  test('Skipping by combined keys.', async () => {
     let pos = 0;
     await database.read(['rows'], async (trx) => {
       for await (const cursor of trx.selectFrom('rows').by('name').cursor()) {
