@@ -30,4 +30,4 @@ jobs:
       - name: Setup Playright
         run: yarn playwright install --with-deps --only-shell
       - name: Run test coverage
-        run: npm tests:github
+        run: yarn tests:complete

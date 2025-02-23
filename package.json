@@ -12,7 +12,6 @@
     "tests:firefox": "vitest run --browser=firefox",
     "tests:webkit": "vitest run --browser=webkit",
     "tests:complete": "run-s tests:firefox tests:webkit test",
-    "tests:github": "run-s tests:firefox test",
     "coverage": "vitest run --browser=chromium --coverage",
     "eslint:fix": "eslint . --fix",
     "eslint:check": "eslint .",
