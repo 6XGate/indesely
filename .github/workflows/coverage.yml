@@ -12,6 +12,7 @@ concurrency:
 
 jobs:
   test:
+    name: Code testing and coverage
     runs-on: ubuntu-latest
 
     steps:
