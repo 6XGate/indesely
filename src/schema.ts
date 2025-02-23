@@ -1,99 +1,90 @@
-import { AutoIncrement } from './utilities.js';
+import type { Get, Paths } from 'type-fest';
 
-/**
- * Index schema builder.
- */
-export class IndexSchemaBuilder {
-  readonly #handle;
+/** Symbol to indicate the schema should be flexible enough for migration. */
+export type UpgradingKey = typeof UpgradingKey;
+/** Symbol to indicate the schema should be flexible enough for migration. */
+export const UpgradingKey = Symbol('UpgradingKey');
 
+/** The base of the manual key. */
+const ManualBase = Symbol('ManualKey');
+
+/** Symbol to indicates a manual key. */
+export type ManualKey<K extends IDBValidKey = IDBValidKey> = typeof ManualBase & { __key: K };
+/** Symbol to indicates a manual key. */
+export const ManualKey = ManualBase as ManualKey;
+
+/** Symbol to indicate an auto-increment key. */
+export type AutoIncrement = typeof AutoIncrement;
+/** Symbol to indicate an auto-increment key. */
+export const AutoIncrement = Symbol('AutoIncrement');
+
+/** Gets the type or, when an array, the element type of a value. */
+type MemberElement<T> = T extends (infer E)[] ? E : T;
+
+/** Gets all possible paths in `Row` */
+export type MemberPaths<Row> = Paths<Row, { bracketNotation: true }>;
+
+/** Gets the compound types of the paths in `Row`. */
+type MemberTypes<Row extends object, Keys> = Keys extends []
+  ? []
+  : Keys extends [infer Key extends MemberPaths<Row>]
+    ? [MemberElement<Get<Row, Key>>]
+    : Keys extends [infer Key extends MemberPaths<Row>, ...infer Rest]
+      ? [MemberElement<Get<Row, Key>>, ...MemberTypes<Row, Rest>]
+      : never;
+
+/** Gets the types of a path or paths in `Row`. */
+export type MemberType<Row extends object, Key> = Key extends UpgradingKey
+  ? IDBValidKey
+  : Key extends MemberPaths<Row>[]
+    ? MemberTypes<Row, Key>
+    : Key extends MemberPaths<Row>
+      ? MemberElement<Get<Row, Key>>
+      : never;
+
+/** Gets the key path of a store. */
+export type StoreKey<Store extends object> = Store extends { key: infer Key } ? Key : never;
+/** Gets the document type of a store. */
+export type StoreRow<Store extends object> = Store extends { row: infer Row extends object } ? Row : never;
+/** Gets the document type of a store. */
+export type StoreIndices<Store extends object> = Store extends { indices: infer Indices extends object }
+  ? Indices
+  : never;
+
+/** Gets the type of the key of a row */
+export type KeyOf<Row extends object, Key> = Key extends AutoIncrement
+  ? number
+  : Key extends ManualKey<infer K>
+    ? K
+    : Key extends UpgradingKey
+      ? IDBValidKey
+      : MemberType<Row, Key>;
+
+/** Provides the basic information about an object store. */
+export class ObjectStore {
+  /**
+   * The native IndexedDB {@link IDBObjectStore} handle.
+   * @internal
+   */
+  protected readonly handle;
+
+  /** @internal */
   constructor(store: IDBObjectStore) {
-    this.#handle = store;
+    this.handle = store;
   }
 
-  /**
-   * Adds an index to the object store.
-   * @param name - The name of the index.
-   * @param keyPath - Path or paths to the indexed keys.
-   * @param options - Indexing options.
-   * @returns This {@link IndexSchemaBuilder} instance.
-   */
-  createIndex(name: string, keyPath: string | string[], options?: IDBIndexParameters) {
-    this.#handle.createIndex(name, keyPath, options);
-    return this;
+  /** Gets the name of the object store. */
+  get name() {
+    return this.handle.name;
   }
 
-  /**
-   * Deletes an index of the object store.
-   * @param name - The name of the index.
-   * @returns This {@link IndexSchemaBuilder} instance.
-   */
-  deleteIndex(name: string) {
-    this.#handle.deleteIndex(name);
-    return this;
+  /** Gets the key path of the object store. */
+  get keyPath() {
+    return (this.handle.keyPath as string | string[] | null) ?? (this.handle.autoIncrement ? AutoIncrement : ManualKey);
+  }
+
+  /** Gets the names of the indices of the object store. */
+  get indexNames() {
+    return Array.from(this.handle.indexNames);
   }
 }
-
-/**
- * Update transaction.
- *
- * Do not mix other asynchronous operations with IndexedDB operations
- * within a transaction, the transaction will timeout.
- */
-export class UpgradeTransaction {
-  readonly #handle;
-
-  constructor(transaction: IDBTransaction) {
-    this.#handle = transaction;
-  }
-
-  /**
-   * Alters an object store in the database within the transaction.
-   * @param name - The name of the store.
-   * @returns A {@link IndexSchemaBuilder} for the store.
-   */
-  alterStore(name: string) {
-    return new IndexSchemaBuilder(this.#handle.objectStore(name));
-  }
-
-  /**
-   * Create an object store in the database within the transaction.
-   * @param name - The name of the store.
-   * @returns A {@link IndexSchemaBuilder} for the store.
-   */
-  createStore(name: string): IndexSchemaBuilder;
-  /**
-   * Create an object store in the database within the transaction.
-   * @param name - The name of the store.
-   * @param autoIncrement - Indicates an auto increment key.
-   * @returns A {@link IndexSchemaBuilder} for the store.
-   */
-  createStore(name: string, autoIncrement: AutoIncrement): IndexSchemaBuilder;
-  /**
-   * Create an object store in the database within the transaction.
-   * @param name - The name of the store.
-   * @param keyPath - The path to the primary key.
-   * @returns A {@link IndexSchemaBuilder} for the store.
-   */
-  createStore(name: string, keyPath: string | string[]): IndexSchemaBuilder;
-  /** The {@link createStore} implementation. */
-  createStore(name: string, keyPath?: AutoIncrement | string | string[]) {
-    const keyInfo = Array.isArray(keyPath) || typeof keyPath === 'string' ? { keyPath } : {};
-    const incInfo = keyPath === AutoIncrement ? { autoIncrement: true } : {};
-
-    return new IndexSchemaBuilder(this.#handle.db.createObjectStore(name, { ...keyInfo, ...incInfo }));
-  }
-
-  /**
-   * Deletes an object store in the database within the transaction.
-   * @param name - The name of the store.
-   */
-  deleteStore(name: string) {
-    this.#handle.db.deleteObjectStore(name);
-  }
-}
-
-/**
- * Migration function.
- * @param transaction - The migration transaction.
- */
-export type Migration = (transaction: UpgradeTransaction) => void;

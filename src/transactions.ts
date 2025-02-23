@@ -1,5 +1,58 @@
-import { DeleteQueryBuilder, InsertQueryBuilder, SelectQueryBuilder, UpdateQueryBuilder } from './builders.js';
-import type { StoreIndices, StoreKey, StoreRow } from './utilities.js';
+import { DeleteQueryBuilder, SelectQueryBuilder, UpdateQueryBuilder } from './builders.js';
+import { withResolvers } from './compat.js';
+import { ObjectStore } from './schema.js';
+import type { StoreIndices, StoreKey, StoreRow } from './schema.js';
+import type { Promisable } from 'type-fest';
+
+/** An IndexedDB transaction. */
+export class Transaction<Schema extends Record<string, object>> {
+  /**
+   * The native {@link IDBTransaction} handle.
+   * @internal
+   */
+  protected readonly handle;
+
+  /** @internal */
+  constructor(transaction: IDBTransaction) {
+    this.handle = transaction;
+  }
+
+  /**
+   * Gets an information about an object store.
+   * @param name - The name of the object store.
+   */
+  getObjectStore<Store extends keyof Schema>(name: Store) {
+    return new ObjectStore(this.handle.objectStore(String(name)));
+  }
+
+  /** Forcibly aborts the transaction. */
+  abort() {
+    this.handle.abort();
+  }
+
+  /**
+   * Runs the callback {@link scope} within the transaction.
+   * @internal
+   */
+  async run<Result>(scope: (trx: this) => Promisable<Result>) {
+    const { promise, resolve, reject } = withResolvers<Result>();
+    const trx = this.handle;
+
+    try {
+      const result = await scope(this);
+
+      trx.oncomplete = () => resolve(result);
+      /* v8 ignore next 1 -- Hard to forcibly test */
+      trx.onerror = () => reject(trx.error ?? new Error('Unknown transaction error'));
+      trx.onabort = () => reject(trx.error ?? new Error('Transaction aborted'));
+    } catch (error) {
+      trx.abort();
+      throw error;
+    }
+
+    return await promise;
+  }
+}
 
 /**
  * Read-only transaction.
@@ -7,22 +60,16 @@ import type { StoreIndices, StoreKey, StoreRow } from './utilities.js';
  * Do not mix other asynchronous operations with IndexedDB operations
  * within a transaction, the transaction will timeout.
  */
-export class ReadOnlyTransaction<Schema extends Record<string, object>> {
-  readonly #handle;
-
-  constructor(transaction: IDBTransaction) {
-    this.#handle = transaction;
-  }
-
+export class ReadOnlyTransaction<Schema extends Record<string, object>> extends Transaction<Schema> {
   /**
    * Starts a selection query within the transaction.
    * @param store - The name of the object store.
    * @returns A {@link SelectQueryBuilder} to build and execute a selection query.
    */
   selectFrom<Store extends keyof Schema>(store: Store) {
-    return new SelectQueryBuilder<StoreRow<Schema[Store]>, StoreKey<Schema[Store]>, StoreIndices<Schema[Store]>>(
-      this.#handle.objectStore(String(store)),
-    );
+    return new SelectQueryBuilder<StoreRow<Schema[Store]>, StoreKey<Schema[Store]>, StoreIndices<Schema[Store]>>({
+      store: this.handle.objectStore(String(store)),
+    });
   }
 }
 
@@ -33,32 +80,14 @@ export class ReadOnlyTransaction<Schema extends Record<string, object>> {
  * within a transaction, the transaction will timeout.
  */
 export class ReadWriteTransaction<Schema extends Record<string, object>> extends ReadOnlyTransaction<Schema> {
-  readonly #handle;
-
-  constructor(transaction: IDBTransaction) {
-    super(transaction);
-    this.#handle = transaction;
-  }
-
   /**
-   * Starts an insertion query within the transaction.
-   * @param store - The name of the object store.
-   * @returns A {@link InsertQueryBuilder} to build and execute an insertion query.
-   */
-  insertInto<Store extends keyof Schema>(store: Store) {
-    return new InsertQueryBuilder<StoreRow<Schema[Store]>, StoreKey<Schema[Store]>>(
-      this.#handle.objectStore(String(store)),
-    );
-  }
-
-  /**
-   * Starts an update query within the transaction.
+   * Starts an insertion or update query within the transaction.
    * @param store - The name of the object store.
    * @returns A {@link UpdateQueryBuilder} to build and execute an update query.
    */
   update<Store extends keyof Schema>(store: Store) {
     return new UpdateQueryBuilder<StoreRow<Schema[Store]>, StoreKey<Schema[Store]>>(
-      this.#handle.objectStore(String(store)),
+      this.handle.objectStore(String(store)),
     );
   }
 
@@ -69,7 +98,7 @@ export class ReadWriteTransaction<Schema extends Record<string, object>> extends
    */
   deleteFrom<Store extends keyof Schema>(store: Store) {
     return new DeleteQueryBuilder<StoreRow<Schema[Store]>, StoreKey<Schema[Store]>>(
-      this.#handle.objectStore(String(store)),
+      this.handle.objectStore(String(store)),
     );
   }
 }

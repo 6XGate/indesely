@@ -1,56 +1,38 @@
-import { memoize, withResolvers } from './compat.js';
-import type { Get, Paths } from 'type-fest';
+import { withResolvers } from './compat.js';
+import type { Constructor, IsAny } from 'type-fest';
 
-/** Symbol to indicates a manual key. */
-export type ManualKey = typeof ManualKey;
-/** Symbol to indicates a manual key. */
-export const ManualKey = Symbol('ManualKey');
+export function isConstructor(value: unknown): value is Constructor<unknown> {
+  return typeof value === 'function' && value.toString().startsWith('class ');
+}
 
-/** Symbol to indicate an auto-increment key. */
-export type AutoIncrement = typeof AutoIncrement;
-/** Symbol to indicate an auto-increment key. */
-export const AutoIncrement = Symbol('AutoIncrement');
+export function getMessage(cause: unknown) {
+  if (cause instanceof Error) return cause.message;
+  if (cause == null) return `BadError: ${cause}`;
+  if (typeof cause === 'string') return cause;
+  if (typeof cause !== 'object') return String(cause as never);
+  if (!('message' in cause)) return `BadError: ${Object.prototype.toString.call(cause)}`;
+  if (typeof cause.message !== 'string') return getMessage(cause.message);
+  return cause.message;
+}
 
-/** Gets the type or, when an array, the element type of a value. */
-type MemberElement<T> = T extends (infer E)[] ? E : T;
+export type AsError<T> = IsAny<T> extends true ? Error : T extends Error ? T : Error;
 
-/** Gets all possible paths in `Row` */
-export type MemberPaths<Row> = Paths<Row, { bracketNotation: true }>;
+export function toError<Cause>(cause: Cause): AsError<Cause>;
+export function toError(cause: unknown) {
+  if (cause instanceof Error) return cause;
+  return new Error(getMessage(cause));
+}
 
-/** Gets the compound types of the paths in `Row`. */
-type MemberTypes<Row extends object, Keys> = Keys extends []
-  ? []
-  : Keys extends [infer Key extends MemberPaths<Row>]
-    ? [MemberElement<Get<Row, Key>>]
-    : Keys extends [infer Key extends MemberPaths<Row>, ...infer Rest]
-      ? [MemberElement<Get<Row, Key>>, ...MemberTypes<Row, Rest>]
-      : never;
-
-/** Gets the types of a path or paths in `Row`. */
-export type MemberType<Row extends object, Key> = Key extends [...unknown[]]
-  ? MemberTypes<Row, Key>
-  : Key extends MemberPaths<Row>
-    ? MemberElement<Get<Row, Key>>
-    : never;
-
-/** Gets the key path of a store. */
-export type StoreKey<Store extends object> = Store extends { key: infer Key } ? Key : never;
-/** Gets the document type of a store. */
-export type StoreRow<Store extends object> = Store extends { row: infer Row extends object } ? Row : never;
-/** Gets the document type of a store. */
-export type StoreIndices<Store extends object> = Store extends { indices: infer Indices extends object }
-  ? Indices
-  : never;
+/** Is the origin data persistent? Has it been requested or checked? */
+let isPersistent: boolean | undefined;
 
 /**
  * Request that the application databases are persisted.
  * @param fail - Indicates whether to throw an error on failure.
  */
-// eslint-disable-next-line @typescript-eslint/no-inferrable-types -- Does not work here.
-export const requestDatabasePersistence = memoize(async (fail: boolean = false) => {
-  let isPersistent = await globalThis.navigator.storage.persisted();
-  if (!isPersistent) {
-    isPersistent = await globalThis.navigator.storage.persist();
+export async function requestDatabasePersistence(fail = false) {
+  if (isPersistent == null) {
+    isPersistent = (await globalThis.navigator.storage.persisted()) || (await globalThis.navigator.storage.persist());
   }
 
   if (fail && !isPersistent) {
@@ -58,21 +40,31 @@ export const requestDatabasePersistence = memoize(async (fail: boolean = false) 
   }
 
   return isPersistent;
-});
+}
+
+/** Default error translator. */
+const defaultErrorTranslator = (cause: DOMException | null): Error | null => cause;
+
+/** Determines the final request error. */
+function requestError(error: DOMException | null, onError = defaultErrorTranslator) {
+  let final = onError(error);
+  /* v8 ignore next 1 -- Hard to forcibly tests */
+  if (final == null) final = new Error('Unknown request failure');
+  return final;
+}
 
 /**
  * Waits on a IndexedDB request to succeed or fail.
  * @param request - The IndexedDB request to wait on.
+ * @param onError - Custom error translator or replacer.
  * @returns The result of the IndexedDB request on success.
  * @throws If the IndexedDB request fails.
  */
-export async function waitOnRequest<T>(request: IDBRequest<T>) {
+export async function waitOnRequest<T>(request: IDBRequest<T>, onError = defaultErrorTranslator) {
   const { promise, resolve, reject } = withResolvers<T>();
-  request.onsuccess = () => {
-    resolve(request.result);
-  };
-  request.onerror = () => {
-    reject(request.error);
-  };
+
+  request.onsuccess = () => resolve(request.result);
+  request.onerror = () => reject(requestError(request.error, onError));
+
   return await promise;
 }
