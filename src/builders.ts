@@ -60,9 +60,9 @@ interface SelectQueryOptions<Indices> {
 /** Read query builder. */
 export class SelectQueryBuilder<Row extends object, Key, Indices extends object, CursorKey = Key> extends ObjectStore {
   /** Select by key range. */
-  #range;
+  readonly #range;
   /** Select by index range. */
-  #index;
+  readonly #index;
 
   /** @internal */
   constructor({ store, range = null, index = null }: SelectQueryOptions<Indices>) {

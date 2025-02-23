@@ -162,6 +162,7 @@ export function defineDatabase<Schema extends Record<string, object>>(options: D
           for (const migration of migrations.slice(ev.oldVersion)) {
             migrationVersion += 1;
             migrationName = migration.name ? migration.name : String(migrationVersion);
+            // eslint-disable-next-line no-await-in-loop -- Migrations must be run in order serially.
             await migration(trx);
           }
         });
