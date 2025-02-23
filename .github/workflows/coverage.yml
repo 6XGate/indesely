@@ -11,8 +11,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  test:
-    name: Code testing and coverage
+  coverage:
     runs-on: ubuntu-latest
 
     steps:

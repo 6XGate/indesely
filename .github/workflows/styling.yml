@@ -7,8 +7,7 @@ on:
     branches: ['main']
 
 jobs:
-  eslint:
-    name: Code style scanning
+  styling:
     runs-on: ubuntu-latest
     permissions:
       contents: read

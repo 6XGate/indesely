@@ -16,7 +16,6 @@ concurrency:
 
 jobs:
   build:
-    name: Building documentation
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
