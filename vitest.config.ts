@@ -21,6 +21,19 @@ export default defineConfig({
     },
     coverage: {
       exclude: ['src/compat.ts', ...coverageConfigDefaults.exclude],
+      reporter: ['text', 'html', 'json-summary'],
+      reportOnFailure: true,
+      thresholds: {
+        // Set the base thresholds to 90%, per-file.
+        lines: 90,
+        functions: 90,
+        branches: 90,
+        statements: 90,
+        perFile: true,
+        // Might enable one day, was already 100%
+        // when thresholds were set.
+        // autoUpdate: true,
+      },
     },
   },
 });
