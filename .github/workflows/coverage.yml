@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: ['main']
 
+permissions:
+  contents: read
+  pull-requests: write
+
 concurrency:
   group: coverage
   cancel-in-progress: false
@@ -31,3 +35,8 @@ jobs:
         run: yarn playwright install --with-deps --only-shell
       - name: Run test coverage
         run: yarn tests:complete
+      - name: 'Report Coverage'
+        # Set if: always() to also generate the report if tests are failing
+        # Only works if you set `reportOnFailure: true` in your vite config as specified above
+        if: always()
+        uses: davelosert/vitest-coverage-report-action@v2
