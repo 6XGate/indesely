@@ -51,18 +51,6 @@ outline: deep
 
   - `Index` — The index on which to sort the query, as well as the index from which keys on cursors will be sourced.
 
-## \[Symbol.asyncIterator\]()
-
-- **Summary**
-
-  ```ts
-  class SelectQueryBuilder {
-    [Symbol.asyncIterator](): AsyncGenerator<Row, void, number | undefined>;
-  }
-  ```
-
-  Gets an iterator to read records in the store that match the query. Pass a number to the `iterator.next` call will advance the cursor that number of iterations.
-
 ## cursor()
 
 - **Summary**

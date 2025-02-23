@@ -15,7 +15,12 @@ export default defineConfig({
       '/reference/': { base: '/reference/', items: sidebarReference() },
     },
 
-    socialLinks: [{ icon: 'github', link: 'https://github.com/sixxgate/indesely' }],
+    socialLinks: [{ icon: 'github', link: 'https://github.com/6XGate/indesely' }],
+
+    footer: {
+      message: 'Released under the MIT License.',
+      copyright: 'Copyright © 2024-present Matthew Holder',
+    },
   },
 });
 
