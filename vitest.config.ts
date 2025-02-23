@@ -21,7 +21,7 @@ export default defineConfig({
     },
     coverage: {
       exclude: ['src/compat.ts', ...coverageConfigDefaults.exclude],
-      reporter: ['text', 'html', 'json-summary'],
+      reporter: ['text', 'html', 'json-summary', 'json'],
       reportOnFailure: true,
       thresholds: {
         // Set the base thresholds to 90%, per-file.
