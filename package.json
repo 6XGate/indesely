@@ -1,10 +1,18 @@
 {
   "name": "indesely",
   "version": "1.0.0",
-  "license": "MIT",
-  "type": "module",
-  "main": "dist/index.js",
   "packageManager": "yarn@1.22.22",
+  "main": "dist/index.js",
+  "author": "Matthew Holder <sixxgate@hotmail.com>",
+  "license": "MIT",
+  "description": "Opinionated ESLint configuration builder inspired Standard",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "test": "vitest run --browser=chromium --typecheck.enabled --coverage",
     "tests:watch": "vitest --browser=chromium",
@@ -24,6 +32,19 @@
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs"
   },
+  "files": [
+    "README.md",
+    "LICENSE",
+    "dist/**/*.d.ts",
+    "dist/**/*.d.cts",
+    "dist/**/*.d.mts",
+    "dist/**/*.js",
+    "dist/**/*.cjs",
+    "dist/**/*.mjs",
+    "dist/**/*.js.map",
+    "dist/**/*.cjs.map",
+    "dist/**/*.mjs.map"
+  ],
   "devDependencies": {
     "@eslint/js": "^9.21.0",
     "@tsconfig/node20": "^20.1.4",
