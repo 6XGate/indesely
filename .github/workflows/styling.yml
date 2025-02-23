@@ -1,4 +1,4 @@
-name: ESLint
+name: Code Styling by ESLint and Prettier
 
 on:
   push:
