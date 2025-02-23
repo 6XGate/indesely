@@ -31,6 +31,28 @@ outline: deep
 
   Gets the number of records that matches the query.
 
+## by()
+
+- **Summary**
+
+  ```ts
+  class SelectQueryBuilder {
+    by<Index>(index: Index): SelectQueryBuilder<Row, Key, Indices, Indices[Index]>;
+  }
+  ```
+
+  Adds a clause to the builder to get and sort records by an index. May not be combine with the [`where`](#where) or [`whereKey`](#wherekey) clause.
+
+- **Parameters**
+
+  - `index` — The index on which to index and sort the query, as well as the index from which keys on cursors will be sourced.
+
+- **Type Parameters**
+
+  - `Index` — The index on which to sort the query, as well as the index from which keys on cursors will be sourced.
+
+## \[Symbol.asyncIterator\]()
+
 ## cursor()
 
 - **Summary**
@@ -266,11 +288,11 @@ outline: deep
   }
   ```
 
-  Adds a where clause, known as a constraint, to the query using the specified index. Only one such constraint may exist at a time on a query
+  Adds a where clause, known as a constraint, to the query using the specified index. Also specified by which index records will be sorted. Only one such constraint may exist at a time on a query. May not be combine with the [`by`](#by) clause.
 
 - **Parameters**
 
-  - `index` — The index on which to contain the query, as well as the index from which keys on cursors will be sourced.
+  - `index` — The index on which to constrain the query, as well as the index from which keys on cursors will be sourced.
   - `op` — The [operator](where-operators) with which to the compare the specified values with the record keys.
   - `key` — The value with which to compare the primary keys of the records in the store.
   - `lower` — The lower bounds with which to compare the primary keys of the records in the store.
@@ -278,7 +300,7 @@ outline: deep
 
 - **Type Parameters**
 
-  - `Index` — The index on which to contain the query, as well as the index from which keys on cursors will be sourced.
+  - `Index` — The index on which to constrain the query, as well as the index from which keys on cursors will be sourced.
   - `IndexKey` — The index's key type.
 
 - **Returns**
@@ -296,7 +318,7 @@ outline: deep
   }
   ```
 
-  Adds a where clause, known as a constraint, to the query using the primary key. Only one such constraint may exist at a time on a query
+  Adds a where clause, known as a constraint, to the query using the primary key. Only one such constraint may exist at a time on a query. May not be combine with the [`by`](#by) clause.
 
 - **Parameters**
 

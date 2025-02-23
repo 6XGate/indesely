@@ -1,3 +1,4 @@
+import { alphabetical } from 'radashi';
 import { beforeEach, describe, expect, test } from 'vitest';
 import { defineDatabase, AutoIncrement } from '../../src';
 import { getSuitePath } from '../tools/utilities';
@@ -66,6 +67,12 @@ describe('Basic operations', () => {
       database.read(['rows'], async (trx) => await trx.selectFrom('rows').getFirstKeyOrThrow()),
     ).rejects.toThrow(SyntaxError('Missing where clause'));
     await expect(
+      database.read(['rows'], async (trx) => await trx.selectFrom('rows').by('unknown').getFirst()),
+    ).rejects.toThrow(SyntaxError('Missing where clause'));
+    await expect(
+      database.read(['rows'], async (trx) => await trx.selectFrom('rows').by('unknown').getFirstKey()),
+    ).rejects.toThrow(SyntaxError('Missing where clause'));
+    await expect(
       database.read(['rows'], (trx) =>
         // @ts-expect-error -- Expect an error because `whereKey` has been omitted.
         // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
@@ -77,6 +84,13 @@ describe('Basic operations', () => {
         // @ts-expect-error -- Expect an error because `whereKey` has been omitted and no such named index.
         // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
         trx.selectFrom('rows').whereKey('=', 1).where('unknown', '=', 1),
+      ),
+    ).rejects.toThrow(SyntaxError('Where clause cannot be redefined'));
+    await expect(
+      database.read(['rows'], (trx) =>
+        // @ts-expect-error -- Expect an error because `whereKey` has been omitted and no such named index.
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
+        trx.selectFrom('rows').by('unknown').where('unknown', '=', 1),
       ),
     ).rejects.toThrow(SyntaxError('Where clause cannot be redefined'));
     // whereKey arguments...
@@ -551,10 +565,7 @@ describe('Key lookup operations', () => {
             let pos = 3;
             const iterator = trx.selectFrom('rows').whereKey('>', 3).stream();
             for (let result = await iterator.next(); !result.done; result = await iterator.next(2)) {
-              // const cursor = result.value;
               const [value] = records.at(pos) ?? [];
-              // expect(cursor.key).toBe(key);
-              // expect(cursor.primaryKey).toBe(key);
               expect(result.value).toStrictEqual(value);
 
               pos += 2;
@@ -564,10 +575,7 @@ describe('Key lookup operations', () => {
             pos = 8;
             const keyIterator = trx.selectFrom('rows').whereKey('>', 3).streamKeys('prev');
             for (let result = await keyIterator.next(); !result.done; result = await keyIterator.next(2)) {
-              // const cursor = result.value;
               const [, key] = records.at(pos) ?? [];
-              // expect(cursor.key).toBe(key);
-              // expect(cursor.primaryKey).toBe(key);
               expect(result.value).toStrictEqual(key);
               pos -= 2;
             }
@@ -576,10 +584,7 @@ describe('Key lookup operations', () => {
             pos = 3;
             const primaryIterator = trx.selectFrom('rows').whereKey('>', 3).streamPrimaryKeys();
             for (let result = await primaryIterator.next(); !result.done; result = await primaryIterator.next(2)) {
-              // const cursor = result.value;
               const [, key] = records.at(pos) ?? [];
-              // expect(cursor.key).toBe(key);
-              // expect(cursor.primaryKey).toBe(key);
               expect(result.value).toStrictEqual(key);
 
               pos += 2;
@@ -588,10 +593,7 @@ describe('Key lookup operations', () => {
 
             pos = 3;
             for await (const result of trx.selectFrom('rows').whereKey('>', 3)) {
-              // const cursor = result.value;
               const [row] = records.at(pos) ?? [];
-              // expect(cursor.key).toBe(key);
-              // expect(cursor.primaryKey).toBe(key);
               expect(result).toStrictEqual(row);
 
               pos += 1;
@@ -1236,15 +1238,216 @@ describe('Indexed lookup operations', () => {
     });
   });
   describe('Relative to values', () => {
-    describe.todo('Cursors');
-    describe.todo('Retrieval');
-    describe.todo('Update');
-    describe.todo('Delete');
+    let sorted: typeof records;
+    beforeEach(() => {
+      sorted = alphabetical(records, (row) => row[0].name) as never;
+    });
+
+    test('Value cursor, >', async () => {
+      await database.read(['rows'], async (trx) => {
+        let pos = 3;
+        for await (const cursor of trx.selectFrom('rows').where('name', '>', 'Inara').cursor()) {
+          const [value, key] = sorted.at(pos) ?? [];
+          expect(cursor.key).toBe(value?.name);
+          expect(cursor.primaryKey).toBe(key);
+          expect(cursor.value).toStrictEqual(value);
+
+          pos += 1;
+        }
+        expect(pos).toBe(9);
+        for await (const cursor of trx.selectFrom('rows').where('name', '>', 'Inara').cursor('prev')) {
+          pos -= 1;
+
+          const [value, key] = sorted.at(pos) ?? [];
+          expect(cursor.key).toBe(value?.name);
+          expect(cursor.primaryKey).toBe(key);
+          expect(cursor.value).toStrictEqual(value);
+        }
+        expect(pos).toBe(3);
+      });
+    });
+    test('Key cursor, >=', async () => {
+      await database.read(['rows'], async (trx) => {
+        let pos = 2;
+        for await (const cursor of trx.selectFrom('rows').where('name', '>=', 'Inara').keyCursor()) {
+          const [value, key] = sorted.at(pos) ?? [];
+          expect(cursor.key).toBe(value?.name);
+          expect(cursor.primaryKey).toBe(key);
+
+          pos += 1;
+        }
+        expect(pos).toBe(9);
+        for await (const cursor of trx.selectFrom('rows').where('name', '>=', 'Inara').keyCursor('prev')) {
+          pos -= 1;
+
+          const [value, key] = sorted.at(pos) ?? [];
+          expect(cursor.key).toBe(value?.name);
+          expect(cursor.primaryKey).toBe(key);
+        }
+        expect(pos).toBe(2);
+      });
+    });
+    test('Value stream, <', async () => {
+      await database.read(['rows'], async (trx) => {
+        let pos = 0;
+        for await (const row of trx.selectFrom('rows').where('name', '<', 'River').stream()) {
+          const [value] = sorted.at(pos) ?? [];
+          expect(row).toStrictEqual(value);
+
+          pos += 1;
+        }
+        expect(pos).toBe(6);
+        for await (const row of trx.selectFrom('rows').where('name', '<', 'River').stream('prev')) {
+          pos -= 1;
+
+          const [value] = sorted.at(pos) ?? [];
+          expect(row).toStrictEqual(value);
+        }
+        expect(pos).toBe(0);
+      });
+    });
+    test('Key stream, <=', async () => {
+      await database.read(['rows'], async (trx) => {
+        let pos = 0;
+        for await (const key of trx.selectFrom('rows').where('name', '<=', 'River').streamKeys()) {
+          const [value] = sorted.at(pos) ?? [];
+          expect(key).toStrictEqual(value?.name);
+
+          pos += 1;
+        }
+        expect(pos).toBe(7);
+        for await (const key of trx.selectFrom('rows').where('name', '<=', 'River').streamKeys('prev')) {
+          pos -= 1;
+
+          const [value] = sorted.at(pos) ?? [];
+          expect(key).toStrictEqual(value?.name);
+        }
+        expect(pos).toBe(0);
+      });
+    });
   });
   describe('Values in range', () => {
-    describe.todo('Cursors');
-    describe.todo('Retrieval');
-    describe.todo('Update');
-    describe.todo('Delete');
+    let sorted: typeof records;
+    beforeEach(() => {
+      sorted = alphabetical(records, (row) => row[0].name) as never;
+    });
+    describe('Cursors', () => {
+      test('Value cursor, []', async () => {
+        await database.read(['rows'], async (trx) => {
+          let pos = 2;
+          for await (const cursor of trx.selectFrom('rows').where('name', '[]', 'Inara', 'River').cursor()) {
+            const [value, key] = sorted.at(pos) ?? [];
+            expect(cursor.key).toBe(value?.name);
+            expect(cursor.primaryKey).toBe(key);
+            expect(cursor.value).toStrictEqual(value);
+
+            pos += 1;
+          }
+          expect(pos).toBe(7);
+          for await (const cursor of trx.selectFrom('rows').where('name', '[]', 'Inara', 'River').cursor('prev')) {
+            pos -= 1;
+
+            const [value, key] = sorted.at(pos) ?? [];
+            expect(cursor.key).toBe(value?.name);
+            expect(cursor.primaryKey).toBe(key);
+            expect(cursor.value).toStrictEqual(value);
+          }
+          expect(pos).toBe(2);
+        });
+      });
+      test('Key cursor, [)', async () => {
+        await database.read(['rows'], async (trx) => {
+          let pos = 2;
+          for await (const cursor of trx.selectFrom('rows').where('name', '[)', 'Inara', 'River').keyCursor()) {
+            const [value, key] = sorted.at(pos) ?? [];
+            expect(cursor.key).toBe(value?.name);
+            expect(cursor.primaryKey).toBe(key);
+
+            pos += 1;
+          }
+          expect(pos).toBe(6);
+          for await (const cursor of trx.selectFrom('rows').where('name', '[)', 'Inara', 'River').keyCursor('prev')) {
+            pos -= 1;
+
+            const [value, key] = sorted.at(pos) ?? [];
+            expect(cursor.key).toBe(value?.name);
+            expect(cursor.primaryKey).toBe(key);
+          }
+          expect(pos).toBe(2);
+        });
+      });
+      test('Value stream, (]', async () => {
+        await database.read(['rows'], async (trx) => {
+          let pos = 3;
+          for await (const row of trx.selectFrom('rows').where('name', '(]', 'Inara', 'River').stream()) {
+            const [value] = sorted.at(pos) ?? [];
+            expect(row).toStrictEqual(value);
+
+            pos += 1;
+          }
+          expect(pos).toBe(7);
+          for await (const row of trx.selectFrom('rows').where('name', '(]', 'Inara', 'River').stream('prev')) {
+            pos -= 1;
+
+            const [value] = sorted.at(pos) ?? [];
+            expect(row).toStrictEqual(value);
+          }
+          expect(pos).toBe(3);
+        });
+      });
+      test('Key stream, ()', async () => {
+        await database.read(['rows'], async (trx) => {
+          let pos = 3;
+          for await (const key of trx.selectFrom('rows').where('name', '()', 'Inara', 'River').streamKeys()) {
+            const [value] = sorted.at(pos) ?? [];
+            expect(key).toStrictEqual(value?.name);
+
+            pos += 1;
+          }
+          expect(pos).toBe(6);
+          for await (const key of trx.selectFrom('rows').where('name', '()', 'Inara', 'River').streamKeys('prev')) {
+            pos -= 1;
+
+            const [value] = sorted.at(pos) ?? [];
+            expect(key).toStrictEqual(value?.name);
+          }
+          expect(pos).toBe(3);
+        });
+      });
+    });
+  });
+  test('Sorting with', async () => {
+    const sorted = alphabetical(records, (row) => row[0].name) as unknown as typeof records;
+    let pos = 0;
+    await database.read(['rows'], async (trx) => {
+      for await (const cursor of trx.selectFrom('rows').by('name').cursor()) {
+        const [value, key] = sorted.at(pos) ?? [];
+        expect(cursor.key).toBe(value?.name);
+        expect(cursor.primaryKey).toBe(key);
+        expect(cursor.value).toStrictEqual(value);
+
+        pos += 1;
+      }
+    });
+  });
+  test('Skipping by combined keys.', async () => {
+    const sorted = alphabetical(records, (row) => row[0].name) as unknown as typeof records;
+
+    let pos = 0;
+    await database.read(['rows'], async (trx) => {
+      for await (const cursor of trx.selectFrom('rows').by('name').cursor()) {
+        const [value, key] = sorted.at(pos) ?? [];
+        expect(cursor.key).toBe(value?.name);
+        expect(cursor.primaryKey).toBe(key);
+        expect(cursor.value).toStrictEqual(value);
+
+        pos += 3;
+        const [next, nextKey] = sorted.at(pos) ?? [];
+
+        if (!next?.name) break;
+
+        cursor.continue(next.name, nextKey);
+      }
+    });
   });
 });

@@ -11,7 +11,7 @@ type Bounds = '[]' | '()' | '(]' | '[)';
 type Operators = Compares | Bounds;
 
 /** Where clause functions, use to exclude them from the builder when once called. */
-type Where = 'whereKey' | 'where';
+type WhereBy = 'where' | 'whereKey' | 'by';
 
 /** Gets the necessary _add_ and _put_ parameters for a row. */
 export type UpdateArgsFor<Row extends object, Key> = Key extends AutoIncrement
@@ -42,7 +42,7 @@ type ErrorSource = ErrorFactory | ErrorConstructor;
 interface SelectQueryOptions<Indices> {
   store: IDBObjectStore;
   range?: IDBKeyRange | null | undefined;
-  index?: [name: keyof Indices, range: IDBKeyRange] | null | undefined;
+  index?: [name: keyof Indices, range?: IDBKeyRange] | null | undefined;
 }
 
 /** Read query builder. */
@@ -71,6 +71,19 @@ export class SelectQueryBuilder<Row extends object, Key, Indices extends object,
     }
 
     return await waitOnRequest(this.handle.count());
+  }
+
+  /**
+   * Uses the specified index for ordering and indexing.
+   * @param index - Name of the index with which to index the records.
+   * @returns New {@link SelectQueryBuilder} instance with the index applied.
+   */
+  by<Index extends keyof Indices>(index: Index) {
+    const store = this.handle;
+    return new SelectQueryBuilder<Row, Key, Indices, Indices[Index]>({ store, index: [index] }) as Omit<
+      SelectQueryBuilder<Row, Key, Indices, Indices[Index]>,
+      WhereBy
+    >;
   }
 
   /**
@@ -157,7 +170,7 @@ export class SelectQueryBuilder<Row extends object, Key, Indices extends object,
     }
 
     if (this.#index != null) {
-      const [name, range] = this.#index;
+      const [name, range = null] = this.#index;
       return await waitOnRequest(this.handle.index(String(name)).getAll<Row>(range, count));
     }
 
@@ -170,12 +183,12 @@ export class SelectQueryBuilder<Row extends object, Key, Indices extends object,
       return await waitForRow(this.handle.get<Row>(this.#range));
     }
 
-    if (this.#index != null) {
-      const [name, range] = this.#index;
-      return await waitForRow(this.handle.index(String(name)).get<Row>(range));
-    }
+    if (this.#index == null) throw new SyntaxError('Missing where clause');
 
-    throw new SyntaxError('Missing where clause');
+    const [name, range] = this.#index;
+    if (range == null) throw new SyntaxError('Missing where clause');
+
+    return await waitForRow(this.handle.index(String(name)).get<Row>(range));
   }
 
   /**
@@ -189,7 +202,6 @@ export class SelectQueryBuilder<Row extends object, Key, Indices extends object,
     }
 
     if (error == null) {
-      // }  typeof error !== 'function') {
       throw new Error('No record found');
     }
 
@@ -212,7 +224,7 @@ export class SelectQueryBuilder<Row extends object, Key, Indices extends object,
     }
 
     if (this.#index != null) {
-      const [name, range] = this.#index;
+      const [name, range = null] = this.#index;
       return await waitOnRequest(this.handle.index(String(name)).getAllKeys<PK>(range, count));
     }
 
@@ -227,12 +239,12 @@ export class SelectQueryBuilder<Row extends object, Key, Indices extends object,
       return await waitOnRequest(this.handle.getKey<PK>(this.#range));
     }
 
-    if (this.#index != null) {
-      const [name, range] = this.#index;
-      return await waitOnRequest(this.handle.index(String(name)).getKey<PK>(range));
-    }
+    if (this.#index == null) throw new SyntaxError('Missing where clause');
 
-    throw new SyntaxError('Missing where clause');
+    const [name, range] = this.#index;
+    if (range == null) throw new SyntaxError('Missing where clause');
+
+    return await waitOnRequest(this.handle.index(String(name)).getKey<PK>(range));
   }
 
   /**
@@ -261,27 +273,27 @@ export class SelectQueryBuilder<Row extends object, Key, Indices extends object,
    * @param index - Name of the index with which to compare the value.
    * @param op - The comparison operation.
    * @param value - The value with which to compare the index.
-   * @returns This {@link SelectQueryBuilder} instance.
+   * @returns New {@link SelectQueryBuilder} instance with the constraint applied.
    */
   where<Index extends keyof Indices>(
     index: Index,
     op: Compares,
     value: MemberType<Row, Indices[Index]>,
-  ): Omit<SelectQueryBuilder<Row, Key, Indices, Indices[Index]>, Where>;
+  ): Omit<SelectQueryBuilder<Row, Key, Indices, Indices[Index]>, WhereBy>;
   /**
    * Adds a where clause to the query to compares an index with a bounds.
    * @param index - Name of the index with which to compare the bounds.
    * @param op - The bounds operation.
    * @param lower - The lower bounds with which to compare the index.
    * @param upper - The upper bounds with which to compare the index.
-   * @returns This {@link SelectQueryBuilder} instance.
+   * @returns New {@link SelectQueryBuilder} instance with the constraint applied.
    */
   where<Index extends keyof Indices>(
     index: Index,
     op: Bounds,
     lower: MemberType<Row, Indices[Index]>,
     upper: MemberType<Row, Indices[Index]>,
-  ): Omit<SelectQueryBuilder<Row, Key, Indices, Indices[Index]>, Where>;
+  ): Omit<SelectQueryBuilder<Row, Key, Indices, Indices[Index]>, WhereBy>;
   /** The {@link where} implementation. */
   where<Index extends keyof Indices>(
     name: Index,
@@ -342,21 +354,21 @@ export class SelectQueryBuilder<Row extends object, Key, Indices extends object,
    * Adds a where clause to the query to compare the primary key with a value.
    * @param op - The comparison operation.
    * @param value - The value with which to compare the primary key.
-   * @returns This {@link SelectQueryBuilder} instance.
+   * @returns New {@link SelectQueryBuilder} instance with the constraint applied.
    */
-  whereKey(op: Compares, value: KeyOf<Row, Key>): Omit<SelectQueryBuilder<Row, Key, Indices>, Where>;
+  whereKey(op: Compares, value: KeyOf<Row, Key>): Omit<SelectQueryBuilder<Row, Key, Indices>, WhereBy>;
   /**
    * Adds a where clause to the query to compares the primary key with a bounds.
    * @param op - The bounds operation.
    * @param lower - The lower bounds with which to compare the primary key.
    * @param upper - The upper bounds with which to compare the primary key.
-   * @returns This {@link SelectQueryBuilder} instance.
+   * @returns New {@link SelectQueryBuilder} instance with the constraint applied.
    */
   whereKey(
     op: Bounds,
     lower: KeyOf<Row, Key>,
     upper: KeyOf<Row, Key>,
-  ): Omit<SelectQueryBuilder<Row, Key, Indices>, Where>;
+  ): Omit<SelectQueryBuilder<Row, Key, Indices>, WhereBy>;
   /** The {@link whereKey} implementation. */
   whereKey(op: Operators, first: KeyOf<Row, Key>, last?: KeyOf<Row, Key>) {
     if (this.#range != null || this.#index != null) {
@@ -481,22 +493,27 @@ export class DeleteQueryBuilder<Row extends object, Key> extends ObjectStore {
         return;
     }
 
-    if (last == null) throw new SyntaxError('Missing upper bounds');
+    // The upper bounds has to be checked in each case; otherwise, an unknown
+    // operator will produce the wrong kind of error.
 
     switch (op) {
       case '[]':
+        if (last == null) throw new SyntaxError('Missing upper bounds');
         range = IDBKeyRange.bound(first, last, false, false);
         await waitOnRequest(this.handle.delete(range));
         return;
       case '(]':
+        if (last == null) throw new SyntaxError('Missing upper bounds');
         range = IDBKeyRange.bound(first, last, true, false);
         await waitOnRequest(this.handle.delete(range));
         return;
       case '()':
+        if (last == null) throw new SyntaxError('Missing upper bounds');
         range = IDBKeyRange.bound(first, last, true, true);
         await waitOnRequest(this.handle.delete(range));
         return;
       case '[)':
+        if (last == null) throw new SyntaxError('Missing upper bounds');
         range = IDBKeyRange.bound(first, last, false, true);
         await waitOnRequest(this.handle.delete(range));
         return;
