@@ -1,0 +1,32 @@
+name: Test and Coverage by Vitest
+
+on:
+  push:
+    branches: ['main']
+  pull_request:
+    branches: ['main']
+
+concurrency:
+  group: coverage
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: 'npm'
+      - uses: browser-actions/setup-chrome@v1
+      - uses: browser-actions/setup-firefox@v1
+      - name: Install dependencies
+        run: yarn install
+      - name: Setup Playright
+        run: yarn playwright install --with-deps --only-shell
+      - name: Run test coverage
+        run: npm tests:github
