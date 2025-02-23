@@ -1,6 +1,8 @@
 // @ts-check
 
-export default {
+const prettierConfig = {
   singleQuote: true,
   quoteProps: 'consistent',
 };
+
+export default prettierConfig;

@@ -94,6 +94,7 @@ export class Cursor<Row, Key, PrimaryKey, Input extends IDBCursor | IDBCursorWit
       ({ promise, resolve, reject } = withResolvers<this | null>());
     };
 
+    // eslint-disable-next-line no-await-in-loop -- This is a cursor, so must be serial.
     for (let cursor = await promise; cursor != null; cursor = await promise) {
       yield cursor;
       this.#next();
