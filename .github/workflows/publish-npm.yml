@@ -16,7 +16,6 @@ jobs:
           node-version-file: .nvmrc
           cache: yarn
       - run: yarn install
-      - run: yarn build
       - run: yarn publish --registry https://registry.npmjs.org/
         env:
           NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}

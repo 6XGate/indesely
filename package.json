@@ -1,6 +1,6 @@
 {
   "name": "indesely",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "packageManager": "yarn@1.22.22",
   "main": "dist/index.js",
   "author": "Matthew Holder <sixxgate@hotmail.com>",
@@ -30,7 +30,8 @@
     "clean": "del dist",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
-    "docs:preview": "vitepress preview docs"
+    "docs:preview": "vitepress preview docs",
+    "prepack": "$npm_execpath run build"
   },
   "files": [
     "README.md",
