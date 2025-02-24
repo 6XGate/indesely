@@ -1,12 +1,19 @@
 {
   "name": "indesely",
-  "version": "1.0.2",
-  "packageManager": "yarn@1.22.22",
-  "main": "dist/index.js",
+  "description": "IndexedDB with Kysely Style",
+  "version": "1.0.3",
   "author": "Matthew Holder <sixxgate@hotmail.com>",
   "license": "MIT",
-  "description": "Opinionated ESLint configuration builder inspired Standard",
+  "packageManager": "yarn@1.22.22",
   "type": "module",
+  "main": "dist/index.js",
+  "typings": "dist/index.d.ts",
+  "repository": "github:6XGate/indesely",
+  "keywords": [
+    "indexeddb",
+    "typescript",
+    "browser"
+  ],
   "engines": {
     "node": ">=20"
   },
