@@ -5,20 +5,7 @@ on:
     types: [created]
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          cache-dependency-path: ./package.json
-          node-version-file: .nvmrc
-          cache: yarn
-      - run: yarn install
-      - run: yarn build
-
-  publish-gpr:
-    needs: build
+  publish:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -32,6 +19,7 @@ jobs:
           node-version-file: .nvmrc
           cache: yarn
       - run: yarn install
-      - run: npm publish
+      - run: yarn build
+      - run: yarn publish --registry https://npm.pkg.github.com
         env:
           NODE_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}

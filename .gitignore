@@ -59,5 +59,8 @@ docs/.vitepress/cache/
 .yarn/install-state.gz
 .pnp.*
 
+# Test packages
+**/*.tgz
+
 # Libraries don't use lock files.
 yarn.lock
