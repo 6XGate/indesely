@@ -13,15 +13,15 @@ To install and use Indesely via NPM, you must have node.js and your favorite pac
 ::: code-group
 
 ```sh [npm]
-npm install --save-dev indesely
+npm install indesely
 ```
 
 ```sh [yarn]
-yarn add --dev indesely
+yarn add indesely
 ```
 
 ```sh [pnpm]
-pnpm install --dev indesely
+pnpm install indesely
 ```
 
 :::
