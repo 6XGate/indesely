@@ -1,7 +1,7 @@
 {
   "name": "indesely",
   "description": "IndexedDB with Kysely Style",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "author": "Matthew Holder <sixxgate@hotmail.com>",
   "license": "MIT",
   "packageManager": "yarn@1.22.22",
