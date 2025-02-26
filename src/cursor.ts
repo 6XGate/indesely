@@ -1,5 +1,5 @@
-import { withResolvers } from './compat';
-import { waitOnRequest } from './utilities';
+import { withResolvers } from './compat.js';
+import { waitOnRequest } from './utilities.js';
 
 export class Cursor<Row, Key, PrimaryKey, Input extends IDBCursor | IDBCursorWithValue> {
   /** The cursor request. */

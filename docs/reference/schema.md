@@ -4,6 +4,23 @@ outline: deep
 
 # Database API: Schema
 
+Database schema are defined as an interface or object type with the store name to its schema.
+
+- **Summary**
+
+  ```ts
+  type Schema = {
+    [name: string]: Store</*...*/>;
+  };
+  ```
+
+- **Parts**
+
+  - `name` — The name of the object store.
+  - `Store</*...*/>` The store schema.
+
+## Store
+
 - **Summary**
 
   ```ts
@@ -38,7 +55,7 @@ Primary keys for an object store may be a path to the key within the model, a ma
 
 Key paths are specified as a string of period, `.`, separated values; for example `name.full`.
 
-### Manual Keys
+### ManualKey\<K\>
 
 - **Summary**
 
@@ -53,7 +70,11 @@ Key paths are specified as a string of period, `.`, separated values; for exampl
 
   Manually provided keys are not stored in the record. Using them as the primary key may offer more flexibility when dealing with certain kinds of data. You can also specify the type of the manual key.
 
-### Auto Incrementing Keys
+- **Type Parameters**
+
+  - `K` — If specified, the type of the manually provided keys.
+
+### AutoIncrement
 
 - **Summary**
 
